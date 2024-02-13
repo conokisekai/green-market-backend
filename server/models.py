@@ -63,4 +63,3 @@ class Orders(db.Model):
     buyer_id = db.Column(db.Integer, db.ForeignKey('buyer.buyer_id'), primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.product_id'), primary_key=True)
     total_cost = db.Column(db.Integer)
-
