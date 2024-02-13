@@ -1,0 +1,10 @@
+Faker
+Flask
+Flask-SQLAlchemy
+importlib-metadata
+importlib-resources
+sqlalchemy-serializer
+sqlalchemy
+flask-migrate
+flask-restful
+Flask-Login
