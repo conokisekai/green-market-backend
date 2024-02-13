@@ -60,6 +60,16 @@ class Orders(db.Model):
     __tablename__="orders"
 
     order_id = db.Column(db.Integer, primary_key=True)
-    buyer_id = db.Column(db.Integer, db.ForeignKey('buyer.buyer_id'), primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.product_id'), primary_key=True)
+    buyer_id = db.Column(db.Integer, db.ForeignKey('buyer.buyer_id'))
+    product_id = db.Column(db.Integer, db.ForeignKey('products.product_id'))
     total_cost = db.Column(db.Integer)
+
+class Notifications(db.Model):
+    __tablename__= 'Notifications'
+
+    notification_id = db.Column(db.Integer, primary_key=True)
+    farmer_id = db.Column(db.Integer, db.ForeignKey('farmer.farmer_id'))
+    email = db.Column(db.String(254), unique=True)
+    buyer_id = db.Column(db.Integer, db.ForeignKey('buyer.buyer_id'))
+    message = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, index=True)
