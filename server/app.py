@@ -17,7 +17,6 @@ def home():
     return jsonify(data), 200
 
 
-
 @app.route('/farmer_signup', methods=['POST'])
 def create_user():
     data = request.get_json()
@@ -35,7 +34,6 @@ def create_user():
     db.session.add(new_user)
     db.session.commit()
     return jsonify({'id': new_user.farmer_id, "name":new_user.username})
-
 
 
 @app.route('/farmer_login', methods=['POST'])
@@ -96,16 +94,13 @@ def buyer_login():
     if not username or not password:
         return jsonify({'error': 'Missing username or password'}), 400
 
-    
     user = Buyer.query.filter_by(username=username).first()
 
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
-
     if user.password != password:
         return jsonify({'error': 'Invalid password'}), 401
-
 
     user_details = {
         'buyer_id': user.buyer_id,
@@ -114,6 +109,33 @@ def buyer_login():
     }
 
     return jsonify(user_details), 200
+
+
+@app.route("/del_buyer_login/<buyer_id>", methods=["DELETE"])
+def delete_buyer(buyer_id):
+    user = Buyer.query.filter_by(buyer_id=buyer_id).first()
+
+    if not user:
+        return jsonify({"error": "Buyer not found"}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({"message": "Buyer deleted successfully"}), 200
+
+
+@app.route("/del_farmer_login/<farmer_id>", methods=["DELETE"])
+def delete_farmer(farmer_id):
+    user = Farmer.query.filter_by(farmer_id=farmer_id).first()
+
+    if not user:
+        return jsonify({"error": "Farmer not found"}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({"message": "Farmer deleted successfully"}), 200
+
 
 
 if __name__ == '__main__':
