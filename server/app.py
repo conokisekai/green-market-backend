@@ -137,6 +137,38 @@ def delete_farmer(farmer_id):
     return jsonify({"message": "Farmer deleted successfully"}), 200
 
 
+@app.route("/update_buyer/<int:buyer_id>", methods=["PATCH"])
+def patch_buyer(buyer_id):
+    try:
+        data = request.json
+
+        #print("Received data:", data)  
+
+        new_username = data.get("username")  
+        new_password = data.get("password") 
+
+        #print("New username:", new_username)  
+        #print("New password:", new_password)  
+
+        user = Buyer.query.get(buyer_id)
+
+        if not user:
+            return jsonify({"error": "Buyer not found"}), 404
+
+        if new_username:
+            user.username = new_username
+
+        if new_password:
+            user.password = new_password
+
+        db.session.commit()
+
+        return jsonify({"message": "Buyer information updated successfully"}), 200
+
+    except Exception as e:
+        #print("Error:", e)  
+        return jsonify({"error": "An error occurred"}), 500
+
 
 if __name__ == '__main__':
     app.run(port=4000,debug=True)
