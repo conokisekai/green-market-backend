@@ -1,11 +1,12 @@
 from flask import Flask
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from models import db, Product, Orders, Farmer, Buyer, Review
+from models import db, Product, Order, Farmer, Buyer, Review, Notifications
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///market.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
+migrate=Migrate(app,db)
 db.init_app(app)
 
 
