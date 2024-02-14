@@ -18,7 +18,7 @@ def home():
 
 
 
-@app.route('/farmer', methods=['POST'])
+@app.route('/farmer_signup', methods=['POST'])
 def create_user():
     data = request.get_json()
     username = data['username']
@@ -38,8 +38,8 @@ def create_user():
 
 
 
-@app.route('/login', methods=['POST'])
-def login():
+@app.route('/farmer_login', methods=['POST'])
+def farmer_login():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
