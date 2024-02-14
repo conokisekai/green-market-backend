@@ -18,22 +18,31 @@ def home():
 
 
 @app.route('/farmer_signup', methods=['POST'])
-def create_user():
-    data = request.get_json()
-    username = data['username']
-    password = data['password']
-    email=data['email']
-    phone=data['phone']
-    address=data['address']
+def create_farmer():
+    try:
+        data = request.get_json()
+        if not data or not isinstance(data, dict):
+            return jsonify({'error': True, 'message': 'Invalid JSON data in request'}), 400
 
-    user = Farmer.query.filter_by(username=username).first()
+        required_fields = ['username', 'password', 'email', 'phone', 'address']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return jsonify({'error': True, 'message': f'Missing or empty {field}'}), 400
 
-    if user:
-        return jsonify({'error': True, 'message': 'user already exists'}), 400
-    new_user = Farmer(username=username, email=email,password=password,phone=phone, address=address)
-    db.session.add(new_user)
-    db.session.commit()
-    return jsonify({'id': new_user.farmer_id, "name":new_user.username})
+        # Check if username already exists
+        username = data['username']
+        if Farmer.query.filter_by(username=username).first():
+            return jsonify({'error': True, 'message': 'User already exists'}), 400
+
+        # Create new buyer
+        new_farmer = Farmer(**data) #dict to unpack keyword arguments
+        db.session.add(new_farmer)
+        db.session.commit()
+
+        return jsonify({'id': new_farmer.farmer_id, 'name': new_farmer.username}), 201
+
+    except Exception as e:
+        return jsonify({'error': True, 'message': 'An error occurred while processing the request'}), 500
 
 
 @app.route('/farmer_login', methods=['POST'])
@@ -67,22 +76,30 @@ def farmer_login():
 
 @app.route('/buyer_signup', methods=['POST'])
 def create_buyer():
-    data = request.get_json()
-    username = data['username']
-    password = data['password']
-    email=data['email']
-    phone=data['phone']
-    address=data['address']
+    try:
+        data = request.get_json()
+        if not data or not isinstance(data, dict):
+            return jsonify({'error': True, 'message': 'Invalid JSON data in request'}), 400
 
+        required_fields = ['username', 'password', 'email', 'phone', 'address']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return jsonify({'error': True, 'message': f'Missing or empty {field}'}), 400
 
-    user = Buyer.query.filter_by(username=username).first()
+        # Check if username already exists
+        username = data['username']
+        if Buyer.query.filter_by(username=username).first():
+            return jsonify({'error': True, 'message': 'User already exists'}), 400
 
-    if user:
-        return jsonify({'error': True, 'message': 'user already exists'}), 400
-    new_user = Buyer(username=username, email=email,password=password,phone=phone, address=address)
-    db.session.add(new_user)
-    db.session.commit()
-    return jsonify({'id': new_user.id, "name":new_user.username})
+        # Create new buyer
+        new_buyer = Buyer(**data) #dict to unpack keyword arguments
+        db.session.add(new_buyer)
+        db.session.commit()
+
+        return jsonify({'id': new_buyer.buyer_id, 'name': new_buyer.username}), 201
+
+    except Exception as e:
+        return jsonify({'error': True, 'message': 'An error occurred while processing the request'}), 500
 
 
 @app.route('/buyer_login', methods=['POST'])
