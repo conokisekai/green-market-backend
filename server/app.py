@@ -31,11 +31,12 @@ def create_farmer():
 
         # Check if username already exists
         username = data['username']
-        if Farmer.query.filter_by(username=username).first():
-            return jsonify({'error': True, 'message': 'User already exists'}), 400
+        existing_farmer = Farmer.query.filter_by(username=username).first()
+        if existing_farmer:
+            return jsonify({'error': True, 'message': 'Username already exists'}), 400
 
-        # Create new buyer
-        new_farmer = Farmer(**data) #dict to unpack keyword arguments
+        # Create new farmer
+        new_farmer = Farmer(**data)
         db.session.add(new_farmer)
         db.session.commit()
 
@@ -43,7 +44,6 @@ def create_farmer():
 
     except Exception as e:
         return jsonify({'error': True, 'message': 'An error occurred while processing the request'}), 500
-
 
 @app.route('/farmer_login', methods=['POST'])
 def farmer_login():
@@ -88,11 +88,12 @@ def create_buyer():
 
         # Check if username already exists
         username = data['username']
-        if Buyer.query.filter_by(username=username).first():
-            return jsonify({'error': True, 'message': 'User already exists'}), 400
+        existing_buyer = Buyer.query.filter_by(username=username).first()
+        if existing_buyer:
+            return jsonify({'error': True, 'message': 'Username already exists'}), 400
 
         # Create new buyer
-        new_buyer = Buyer(**data) #dict to unpack keyword arguments
+        new_buyer = Buyer(**data)
         db.session.add(new_buyer)
         db.session.commit()
 
@@ -100,7 +101,6 @@ def create_buyer():
 
     except Exception as e:
         return jsonify({'error': True, 'message': 'An error occurred while processing the request'}), 500
-
 
 @app.route('/buyer_login', methods=['POST'])
 def buyer_login():
