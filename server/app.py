@@ -54,7 +54,16 @@ def create_farmer():
         # Send OTP
         send_otp(new_farmer.phone)
 
-        return jsonify({"id": new_farmer.farmer_id, "name": new_farmer.username}), 201
+        return (
+            jsonify(
+                {
+                    "id": new_farmer.farmer_id,
+                    "name": new_farmer.username,
+                    "OTP sent": send_otp(new_farmer.phone),
+                }
+            ),
+            201,
+        )
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
@@ -124,7 +133,16 @@ def create_buyer():
         # Send OTP
         send_otp(new_buyer.phone)
 
-        return jsonify({"id": new_buyer.buyer_id, "name": new_buyer.username}), 201
+        return (
+            jsonify(
+                {
+                    "id": new_buyer.buyer_id,
+                    "name": new_buyer.username,
+                    "OTP sent": send_otp(new_buyer.phone),
+                }
+            ),
+            201,
+        )
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
