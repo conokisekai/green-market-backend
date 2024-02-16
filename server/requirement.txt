@@ -10,3 +10,4 @@ marshmallow
 sqlalchemy-serializer 
 flask-swagger-ui 
 gunicorn 
+pyotp

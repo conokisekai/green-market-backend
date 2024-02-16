@@ -16,6 +16,8 @@ marshmallow = "*"
 sqlalchemy-serializer = "*"
 flask-swagger-ui = "*"
 gunicorn = "*"
+pyotp = "*"
+flask-mail = "*"
 
 [dev-packages]
 
