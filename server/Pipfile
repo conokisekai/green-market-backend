@@ -18,6 +18,7 @@ flask-swagger-ui = "*"
 gunicorn = "*"
 pyotp = "*"
 flask-mail = "*"
+qrcode = "*"
 
 [dev-packages]
 
