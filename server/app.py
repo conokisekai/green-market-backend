@@ -1,131 +1,160 @@
-from flask import Flask,jsonify,request
+from flask import Flask, jsonify, request
 import json
+from phone import send_otp
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from models import db, Product, Order, Farmer, Buyer, Review, Notifications
+from flask_bcrypt import Bcrypt
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///market.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-migrate=Migrate(app,db)
+bcrypt = Bcrypt(app)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///market.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+migrate = Migrate(app, db)
 db.init_app(app)
 
 
-@app.route('/')
+@app.route("/")
 def home():
-    data = {'Server side': 'Checkers'}
+    data = {"Server side": "Checkers"}
     return jsonify(data), 200
 
 
-@app.route('/farmer_signup', methods=['POST'])
+@app.route("/farmer_signup", methods=["POST"])
 def create_farmer():
     try:
         data = request.get_json()
         if not data or not isinstance(data, dict):
-            return jsonify({'error': True, 'message': 'Invalid JSON data in request'}), 400
+            return (
+                jsonify({"error": True, "message": "Invalid JSON data in request"}),
+                400,
+            )
 
-        required_fields = ['username', 'password', 'email', 'phone', 'address']
+        required_fields = ["username", "password", "email", "phone", "address"]
         for field in required_fields:
             if field not in data or not data[field]:
-                return jsonify({'error': True, 'message': f'Missing or empty {field}'}), 400
+                return (
+                    jsonify({"error": True, "message": f"Missing or empty {field}"}),
+                    400,
+                )
 
-        # Check if username already exists
-        username = data['username']
-        existing_farmer = Farmer.query.filter_by(username=username).first()
-        if existing_farmer:
-            return jsonify({'error': True, 'message': 'Username already exists'}), 400
-
-        # Create new farmer
-        new_farmer = Farmer(**data)
+        hashed_password = bcrypt.generate_password_hash(data["password"]).decode(
+            "utf-8"
+        )
+        new_farmer = Farmer(
+            username=data["username"],
+            password=hashed_password,
+            email=data["email"],
+            phone=data["phone"],
+            address=data["address"],
+        )
         db.session.add(new_farmer)
         db.session.commit()
 
-        return jsonify({'id': new_farmer.farmer_id, 'name': new_farmer.username}), 201
+        # Send OTP
+        send_otp(new_farmer.phone)
+
+        return jsonify({"id": new_farmer.farmer_id, "name": new_farmer.username}), 201
 
     except Exception as e:
-        return jsonify({'error': True, 'message': 'An error occurred while processing the request'}), 500
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
-@app.route('/farmer_login', methods=['POST'])
+
+@app.route("/farmer_login", methods=["POST"])
 def farmer_login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    try:
+        data = request.get_json()
+        if not data or "username" not in data or "password" not in data:
+            return (
+                jsonify({"error": True, "message": "Missing username or password"}),
+                400,
+            )
 
-    if not username or not password:
-        return jsonify({'error': 'Missing username or password'}), 400
+        username = data["username"]
+        password = data["password"]
+        farmer = Farmer.query.filter_by(username=username).first()
 
-    
-    user = Farmer.query.filter_by(username=username).first()
+        if not farmer or not bcrypt.check_password_hash(farmer.password, password):
+            return (
+                jsonify({"error": True, "message": "Invalid username or password"}),
+                401,
+            )
 
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
+        # You may want to generate and return a token for authentication in a real-world scenario
+        return (
+            jsonify({"message": "Login successful", "username": farmer.username}),
+            200,
+        )
 
-
-    if user.password != password:
-        return jsonify({'error': 'Invalid password'}), 401
-
-
-    user_details = {
-        'Farmer_id': user.farmer_id,
-        'username': user.username,
-        
-    }
-
-    return jsonify(user_details), 200
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 
-@app.route('/buyer_signup', methods=['POST'])
+@app.route("/buyer_signup", methods=["POST"])
 def create_buyer():
     try:
         data = request.get_json()
         if not data or not isinstance(data, dict):
-            return jsonify({'error': True, 'message': 'Invalid JSON data in request'}), 400
+            return (
+                jsonify({"error": True, "message": "Invalid JSON data in request"}),
+                400,
+            )
 
-        required_fields = ['username', 'password', 'email', 'phone', 'address']
+        required_fields = ["username", "password", "email", "phone", "address"]
         for field in required_fields:
             if field not in data or not data[field]:
-                return jsonify({'error': True, 'message': f'Missing or empty {field}'}), 400
+                return (
+                    jsonify({"error": True, "message": f"Missing or empty {field}"}),
+                    400,
+                )
 
-        # Check if username already exists
-        username = data['username']
-        existing_buyer = Buyer.query.filter_by(username=username).first()
-        if existing_buyer:
-            return jsonify({'error': True, 'message': 'Username already exists'}), 400
-
-        # Create new buyer
-        new_buyer = Buyer(**data)
+        hashed_password = bcrypt.generate_password_hash(data["password"]).decode(
+            "utf-8"
+        )
+        new_buyer = Buyer(
+            username=data["username"],
+            password=hashed_password,
+            email=data["email"],
+            phone=data["phone"],
+            address=data["address"],
+        )
         db.session.add(new_buyer)
         db.session.commit()
 
-        return jsonify({'id': new_buyer.buyer_id, 'name': new_buyer.username}), 201
+        # Send OTP
+        send_otp(new_buyer.phone)
+
+        return jsonify({"id": new_buyer.buyer_id, "name": new_buyer.username}), 201
 
     except Exception as e:
-        return jsonify({'error': True, 'message': 'An error occurred while processing the request'}), 500
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
-@app.route('/buyer_login', methods=['POST'])
+
+@app.route("/buyer_login", methods=["POST"])
 def buyer_login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    try:
+        data = request.get_json()
+        if not data or "username" not in data or "password" not in data:
+            return (
+                jsonify({"error": True, "message": "Missing username or password"}),
+                400,
+            )
 
-    if not username or not password:
-        return jsonify({'error': 'Missing username or password'}), 400
+        username = data["username"]
+        password = data["password"]
+        buyer = Buyer.query.filter_by(username=username).first()
 
-    user = Buyer.query.filter_by(username=username).first()
+        if not buyer or not bcrypt.check_password_hash(buyer.password, password):
+            return (
+                jsonify({"error": True, "message": "Invalid username or password"}),
+                401,
+            )
 
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
+        # You may want to generate and return a token for authentication in a real-world scenario
+        return jsonify({"message": "Login successful", "username": buyer.username}), 200
 
-    if user.password != password:
-        return jsonify({'error': 'Invalid password'}), 401
-
-    user_details = {
-        'buyer_id': user.buyer_id,
-        'username': user.username,
-        
-    }
-
-    return jsonify(user_details), 200
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 
 @app.route("/del_buyer_login/<buyer_id>", methods=["DELETE"])
@@ -159,13 +188,8 @@ def patch_buyer(buyer_id):
     try:
         data = request.json
 
-        #print("Received data:", data)  
-
-        new_username = data.get("username")  
-        new_password = data.get("password") 
-
-        #print("New username:", new_username)  
-        #print("New password:", new_password)  
+        new_username = data.get("username")
+        new_password = data.get("password")
 
         user = Buyer.query.get(buyer_id)
 
@@ -183,9 +207,8 @@ def patch_buyer(buyer_id):
         return jsonify({"message": "Buyer information updated successfully"}), 200
 
     except Exception as e:
-        #print("Error:", e)  
         return jsonify({"error": "An error occurred"}), 500
 
 
-if __name__ == '__main__':
-    app.run(port=4000,debug=True)
+if __name__ == "__main__":
+    app.run(port=4000, debug=True)
