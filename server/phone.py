@@ -4,6 +4,7 @@ import pyotp
 
 
 def send_otp(phone_number):
+    print("Sending OTP...")  # Add this line for debugging
     key = "AMAROWENFAITHKHALIDCONRADJIMJOHNWILLY"
     totp = pyotp.TOTP(key)
     conn = http.client.HTTPSConnection("5y2v5g.api.infobip.com")
@@ -31,4 +32,4 @@ def send_otp(phone_number):
     conn.request("POST", "/sms/2/text/advanced", payload, headers)
     res = conn.getresponse()
     data = res.read()
-    print(data.decode("utf-8"))
+    print(data.decode("utf-8"))  # Print response for debugging

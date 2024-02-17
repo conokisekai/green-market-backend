@@ -51,7 +51,7 @@ def create_farmer():
         db.session.add(new_farmer)
         db.session.commit()
 
-        # Send OTP
+        # Send OTP only once after adding the farmer
         send_otp(new_farmer.phone)
 
         return (
@@ -59,7 +59,7 @@ def create_farmer():
                 {
                     "id": new_farmer.farmer_id,
                     "name": new_farmer.username,
-                    "OTP sent": send_otp(new_farmer.phone),
+                    "OTP sent": True,
                 }
             ),
             201,
@@ -130,7 +130,7 @@ def create_buyer():
         db.session.add(new_buyer)
         db.session.commit()
 
-        # Send OTP
+        # Send OTP only once after adding the buyer
         send_otp(new_buyer.phone)
 
         return (
@@ -138,7 +138,7 @@ def create_buyer():
                 {
                     "id": new_buyer.buyer_id,
                     "name": new_buyer.username,
-                    "OTP sent": send_otp(new_buyer.phone),
+                    "OTP sent": True,
                 }
             ),
             201,
@@ -229,4 +229,4 @@ def patch_buyer(buyer_id):
 
 
 if __name__ == "__main__":
-    app.run(port=4000, debug=True)
+    app.run(port=4010, debug=True)
