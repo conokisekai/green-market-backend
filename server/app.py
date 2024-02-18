@@ -5,6 +5,7 @@ from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from models import db, Product, Order, Farmer, Buyer, Review, Notifications
 from flask_bcrypt import Bcrypt
+from sqlalchemy.exc import IntegrityError
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
@@ -52,7 +53,7 @@ def create_farmer():
         db.session.commit()
 
         # Send OTP only once after adding the farmer
-        send_otp(new_farmer.phone)
+        send_otp(data["phone"], data["username"])
 
         return (
             jsonify(
@@ -64,6 +65,9 @@ def create_farmer():
             ),
             201,
         )
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
@@ -141,7 +145,7 @@ def create_buyer():
         db.session.commit()
 
         # Send OTP only once after adding the buyer
-        send_otp(new_buyer.phone)
+        send_otp(data["phone"], data["username"])
 
         return (
             jsonify(
@@ -153,6 +157,17 @@ def create_buyer():
             ),
             201,
         )
+
+    except IntegrityError as e:
+        db.session.rollback()  # Rollback the transaction
+        return jsonify({"error": True, "message": f"Username already exists"}), 409
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+    except IntegrityError as e:
+        db.session.rollback()  # Rollback the transaction
+        return jsonify({"error": True, "message": f"Username already exists"}), 409
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500

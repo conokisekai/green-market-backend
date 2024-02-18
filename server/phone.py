@@ -3,13 +3,11 @@ import json
 import pyotp
 
 
-def send_otp(phone_number):
+def send_otp(phone_number, username):
     print("Sending OTP...")  # Add this line for debugging
     key = "AMAROWENFAITHKHALIDCONRADJIMJOHNWILLY"
     totp = pyotp.TOTP(key)
     conn = http.client.HTTPSConnection("e19152.api.infobip.com")
-
-    name = "Anyone"
 
     payload = json.dumps(
         {
@@ -17,7 +15,7 @@ def send_otp(phone_number):
                 {
                     "destinations": [{"to": phone_number}],
                     "from": "ServiceSMS",
-                    "text": f"Agri-Soko 🥀,\n\nThis is a message from Agri-Soko Team 👨‍🌾 \n\n{name} your OTP is {totp.now()}. ",
+                    "text": f"Agri-Soko 🥀,\n\nThis is a message from Agri-Soko Team 👨‍🌾 \n\n{username}, your OTP is {totp.now()}.",
                 }
             ]
         }
