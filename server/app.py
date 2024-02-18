@@ -73,25 +73,35 @@ def create_farmer():
 def farmer_login():
     try:
         data = request.get_json()
-        if not data or "username" not in data or "password" not in data:
-            return (
-                jsonify({"error": True, "message": "Missing username or password"}),
-                400,
-            )
+        if not data or "password" not in data:
+            return jsonify({"error": True, "message": "Missing password"}), 400
 
-        username = data["username"]
         password = data["password"]
-        farmer = Farmer.query.filter_by(username=username).first()
+        farmer = Farmer.query.filter(
+            (Farmer.username == data.get("username"))
+            | (Farmer.phone == data.get("phone"))
+            | (Farmer.email == data.get("email"))
+        ).first()
 
         if not farmer or not bcrypt.check_password_hash(farmer.password, password):
             return (
-                jsonify({"error": True, "message": "Invalid username or password"}),
+                jsonify(
+                    {
+                        "error": True,
+                        "message": "Invalid username, phone, email, or password",
+                    }
+                ),
                 401,
             )
 
-        # You may want to generate and return a token for authentication in a real-world scenario
         return (
-            jsonify({"message": "Login successful", "username": farmer.username}),
+            jsonify(
+                {
+                    "message": "Login successful",
+                    "user_type": "farmer",
+                    "username": farmer.username,
+                }
+            ),
             200,
         )
 
@@ -152,24 +162,37 @@ def create_buyer():
 def buyer_login():
     try:
         data = request.get_json()
-        if not data or "username" not in data or "password" not in data:
-            return (
-                jsonify({"error": True, "message": "Missing username or password"}),
-                400,
-            )
+        if not data or "password" not in data:
+            return jsonify({"error": True, "message": "Missing password"}), 400
 
-        username = data["username"]
         password = data["password"]
-        buyer = Buyer.query.filter_by(username=username).first()
+        buyer = Buyer.query.filter(
+            (Buyer.username == data.get("username"))
+            | (Buyer.phone == data.get("phone"))
+            | (Buyer.email == data.get("email"))
+        ).first()
 
         if not buyer or not bcrypt.check_password_hash(buyer.password, password):
             return (
-                jsonify({"error": True, "message": "Invalid username or password"}),
+                jsonify(
+                    {
+                        "error": True,
+                        "message": "Invalid username, phone, email, or password",
+                    }
+                ),
                 401,
             )
 
-        # You may want to generate and return a token for authentication in a real-world scenario
-        return jsonify({"message": "Login successful", "username": buyer.username}), 200
+        return (
+            jsonify(
+                {
+                    "message": "Login successful",
+                    "user_type": "buyer",
+                    "username": buyer.username,
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
