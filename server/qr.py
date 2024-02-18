@@ -2,7 +2,7 @@ import qrcode
 import pyotp
 key = "AMAROWENFAITHKHALIDCONRADJIMJOHNWILLY"
 
-uri = pyotp.totp.TOTP(key).provisioning_uri(name="Owen", issuer_name="OTP")
+uri = pyotp.totp.TOTP(key).provisioning_uri(name="Agri-Soko", issuer_name="OTP")
 print(uri)
 
 
