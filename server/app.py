@@ -152,6 +152,17 @@ def create_category():
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+    
+@app.route("/get_all_categories", methods=["GET"])
+def get_all_categories():
+    try:
+        categories = Category.query.all()
+        category_list = [{"category_id": category.category_id, "category_name": category.category_name} for category in categories]
 
+        return jsonify({"categories": category_list}), 200
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+    
 if __name__ == "__main__":
     app.run(port=4000, debug=True)
