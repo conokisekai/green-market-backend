@@ -233,6 +233,28 @@ def get_all_products():
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+    
+@app.route("/get_product/<int:product_id>", methods=["GET"])
+def get_product_by_id(product_id):
+    try:
+        product = Product.query.get(product_id)
+
+        if not product:
+            return jsonify({"error": "Product not found"}), 404
+
+        product_data = {
+            "product_id": product.product_id,
+            "product_name": product.product_name,
+            "price": product.price,
+            "quantity": product.quantity,
+            "category_name": product.category_name,
+            "user_id": product.user_id
+        }
+
+        return jsonify({"product": product_data}), 200
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 
 if __name__ == "__main__":
