@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request
 from phone import send_otp
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from models import db, Product, Order, User, Review, Notifications
+from models import db, Product, Order, User, Review, Notifications, Category
 from flask_bcrypt import Bcrypt
 
 app = Flask(__name__)
@@ -132,6 +132,26 @@ def patch_user(user_id):
 
     except Exception as e:
         return jsonify({"error": "An error occurred"}), 500
+    
+@app.route('/create_category', methods=['POST'])
+def create_category():
+    try:
+        data = request.get_json()
+        if not data or not isinstance(data, dict):
+            return jsonify({"error": True, "message": "Invalid JSON data in request"}), 400
+
+        category_name = data.get('category_name')
+        if not category_name:
+            return jsonify({"error": True, "message": "Missing or empty category_name"}), 400
+
+        new_category = Category(category_name=category_name)
+        db.session.add(new_category)
+        db.session.commit()
+
+        return jsonify({"category_id": new_category.category_id, "category_name": new_category.category_name}), 201
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(port=4000, debug=True)
