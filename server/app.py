@@ -255,7 +255,22 @@ def get_product_by_id(product_id):
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+    
+@app.route("/delete_product/<int:product_id>", methods=["DELETE"])
+def delete_product(product_id):
+    try:
+        product = Product.query.get(product_id)
 
+        if not product:
+            return jsonify({"error": "Product not found"}), 404
+
+        db.session.delete(product)
+        db.session.commit()
+
+        return jsonify({"message": "Product deleted successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(port=4000, debug=True)
