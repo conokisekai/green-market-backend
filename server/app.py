@@ -7,6 +7,7 @@ from models import db, Product, Order, User, Review, Notifications
 from flask_bcrypt import Bcrypt
 from sqlalchemy.exc import IntegrityError
 
+
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///market.db"
@@ -127,7 +128,7 @@ def delete_user(user_id):
 
 
 @app.route("/del_user_login/<user_id>", methods=["DELETE"])
-def delete_user(user_id):
+def delete(user_id):
     user = User.query.filter_by(user_id=user_id).first()
 
     if not user:

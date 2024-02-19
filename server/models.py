@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
-app = Flask(name)
+app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///market.db'
 db = SQLAlchemy(app)
 
@@ -9,21 +9,22 @@ class User(db.Model):
     ROLE_BUYER = 'buyer'
     ROLE_SELLER = 'seller'
 
-ROLE_CHOICES = [
-    (ROLE_BUYER, 'Buyer'),
-    (ROLE_SELLER, 'Seller'),
-]
+    ROLE_CHOICES = [
+        (ROLE_BUYER, 'Buyer'),
+        (ROLE_SELLER, 'Seller'),
+    ]
 
-user_id = db.Column(db.Integer, primary_key=True)
-username = db.Column(db.String(80), unique=True, nullable=False)
-password = db.Column(db.String(128), nullable=False)
-email = db.Column(db.String(100), nullable=False)
-phone = db.Column(db.BigInteger(), unique=True)
-address = db.Column(db.Text())
-role = db.Column(db.String(10), nullable=False)
+    user_id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(128), nullable=False)
+    email = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.BigInteger(), unique=True)
+    address = db.Column(db.Text())
+    role = db.Column(db.String(10), nullable=False)
 
-def __repr__(self):
-    return f"<User {self.username}>"
+    def __repr__(self):
+        return f"<User {self.username}>"
+
 class Product(db.Model):
     product_id = db.Column(db.Integer, primary_key=True)
     product_name = db.Column(db.String(80), nullable=False)
@@ -64,6 +65,5 @@ class Notifications(db.Model):
     message = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, index=True)
 
-if name == "main":
+if __name__ == "__main__":
     app.run(debug=True)
-

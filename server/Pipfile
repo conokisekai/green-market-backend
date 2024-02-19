@@ -19,6 +19,7 @@ gunicorn = "*"
 pyotp = "*"
 flask-mail = "*"
 qrcode = "*"
+flask-bcrypt = "*"
 
 [dev-packages]
 
