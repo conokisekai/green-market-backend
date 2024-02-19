@@ -21,7 +21,6 @@ def home():
     data = {"Server side": "Checkers"}
     return jsonify(data), 200
 
-
 @app.route("/user_signup", methods=["POST"])
 def create_user():
     try:
@@ -49,6 +48,7 @@ def create_user():
             email=data["email"],
             phone=data["phone"],
             address=data["address"],
+            role=data["role"],
         )
         db.session.add(new_user)
         db.session.commit()
@@ -69,10 +69,6 @@ def create_user():
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
-
-    except Exception as e:
-        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
-
 
 @app.route("/user_login", methods=["POST"])
 def user_login():
