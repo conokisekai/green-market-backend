@@ -164,5 +164,56 @@ def get_all_categories():
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
     
+@app.route("/create_product", methods=["POST"])
+def create_product():
+    try:
+        data = request.get_json()
+        if not data or not isinstance(data, dict):
+            return (
+                jsonify({"error": True, "message": "Invalid JSON data in request"}),
+                400,
+            )
+
+        required_fields = [
+            "product_name",
+            "price",
+            "quantity",
+            "description",
+            "category_name",  
+            "image_link",  
+        ]
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return (
+                    jsonify({"error": True, "message": f"Missing or empty {field}"}),
+                    400,
+                )
+
+        new_product = Product(
+            product_name=data["product_name"],
+            price=data["price"],
+            quantity=data["quantity"],
+            description=data["description"],
+            category_name=data["category_name"],  
+            image_link=data["image_link"],  
+        )
+        db.session.add(new_product)
+        db.session.commit()
+
+        return (
+            jsonify(
+                {
+                    "product_id": new_product.product_id,
+                    "product_name": new_product.product_name,
+                    "message": "Product created successfully",
+                }
+            ),
+            201,
+        )
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
+
 if __name__ == "__main__":
     app.run(port=4000, debug=True)
