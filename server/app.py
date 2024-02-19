@@ -74,40 +74,33 @@ def create_user():
 def user_login():
     try:
         data = request.get_json()
-        if not data or "password" not in data:
-            return jsonify({"error": True, "message": "Missing password"}), 400
+        if not data or not any(key in data for key in ["username", "phone", "email"]) or "password" not in data:
+            return jsonify({"error": True, "message": "Invalid request data"}), 400
 
+        username = data.get("username")
+        phone = data.get("phone")
+        email = data.get("email")
         password = data["password"]
+
+        # Fetch the user based on provided username, phone, or email
         user = User.query.filter(
-            (User.username == data.get("username"))
-            | (User.phone == data.get("phone"))
-            | (User.email == data.get("email"))
+            (User.username == username) |
+            (User.phone == phone) |
+            (User.email == email)
         ).first()
 
         if not user or not bcrypt.check_password_hash(user.password, password):
-            return (
-                jsonify(
-                    {
-                        "error": True,
-                        "message": "Invalid username, phone, email, or password",
-                    }
-                ),
-                401,
-            )
+            return jsonify({"error": True, "message": "Invalid username, phone, email, or password"}), 401
 
-        return (
-            jsonify(
-                {
-                    "message": "Login successful",
-                    "user_type": "user",
-                    "username": user.username,
-                }
-            ),
-            200,
-        )
+        return jsonify({
+            "message": "Login successful",
+            "user_type": "user",
+            "username": user.username
+        }), 200
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
 
 
 @app.route("/del_user_login/<user_id>", methods=["DELETE"])
@@ -121,19 +114,6 @@ def delete_user(user_id):
     db.session.commit()
 
     return jsonify({"message": "User deleted successfully"}), 200
-
-
-@app.route("/del_user_login/<user_id>", methods=["DELETE"])
-def delete(user_id):
-    user = User.query.filter_by(user_id=user_id).first()
-
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
-    db.session.delete(user)
-    db.session.commit()
-
-    return jsonify({"message": "user deleted successfully"}), 200
 
 
 @app.route("/update_user/<int:user_id>", methods=["PATCH"])
