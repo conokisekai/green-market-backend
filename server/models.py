@@ -33,13 +33,13 @@ class Product(db.Model):
     is_out_of_stock = db.Column(db.Boolean, default=False)
     description = db.Column(db.Text())
     image_link = db.Column(db.String(500))
-    category_id = db.Column(db.Integer, db.ForeignKey("category.category_id"))
+    category_name = db.Column(db.String(500), db.ForeignKey("category.category_id"))
     user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'))
     orders = db.relationship('Order', backref='product')
 
 class Category(db.Model):
     category_id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), unique=True, nullable=False)
+    category_name = db.Column(db.String(80), unique=True, nullable=False)
 
 class Review(db.Model):
     review_id = db.Column(db.Integer, primary_key=True)
