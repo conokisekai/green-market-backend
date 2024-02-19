@@ -213,6 +213,26 @@ def create_product():
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+    
+@app.route("/get_all_products", methods=["GET"])
+def get_all_products():
+    try:
+        products = Product.query.all()
+        product_list = []
+        for product in products:
+            product_list.append({
+                "product_id": product.product_id,
+                "product_name": product.product_name,
+                "price": product.price,
+                "quantity": product.quantity,
+                "category_name": product.category_name,
+                "user_id": product.user_id
+            })
+
+        return jsonify({"products": product_list}), 200
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 
 if __name__ == "__main__":
