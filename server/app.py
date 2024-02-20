@@ -272,5 +272,46 @@ def delete_product(product_id):
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
+@app.route("/orders", methods=["GET"])
+def get_orders():
+    orders = Order.query.all()
+    return jsonify([order.serialize() for order in orders]), 200
+
+@app.route("/orders", methods=["POST"])
+def create_orders():
+    data = request.json
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
+
+    product_id = int(data.get("product_id"))
+    product_name = data.get("user_id")
+   
+    quantity = data.get("quantity")
+    parts = quantity.split(",")  # Split the string by comma
+    quantity = parts[1]  # Access the second part 30
+
+    total_price=data.get("total_price")
+    print(product_id)
+
+    product= Product.query.get(product_id)
+    if not product:
+        return jsonify({"error": "Product not found"}), 404
+
+    total_price = int(product.price) * int(quantity)
+
+
+    new_order = Order(
+        
+        product_id=product_id,
+        product_name=product_name,
+        quantity=quantity,
+        total_price=total_price
+    )
+
+    db.session.add(new_order)
+    db.session.commit()
+
+    return jsonify(new_order.serialize()), 201
+
 if __name__ == "__main__":
     app.run(port=4000, debug=True)

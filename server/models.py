@@ -6,6 +6,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///market.db'
 db = SQLAlchemy(app)
 
 class User(db.Model):
+    __tablename__ = "user"
     ROLE_BUYER = 'buyer'
     ROLE_SELLER = 'seller'
 
@@ -26,6 +27,7 @@ class User(db.Model):
         return f"<User {self.username}>"
 
 class Product(db.Model):
+    __tablename__ = "product"
     product_id = db.Column(db.Integer, primary_key=True)
     product_name = db.Column(db.String(80), nullable=False)
     price = db.Column(db.Float(), nullable=False)
@@ -38,10 +40,12 @@ class Product(db.Model):
     orders = db.relationship('Order', backref='product')
 
 class Category(db.Model):
+    __tablename__ = "category"
     category_id = db.Column(db.Integer, primary_key=True)
     category_name = db.Column(db.String(80), unique=True, nullable=False)
 
 class Review(db.Model):
+    __tablename__ = "review"
     review_id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.product_id'))
     buyer_name = db.Column(db.String(100))
@@ -50,14 +54,18 @@ class Review(db.Model):
     review_date = db.Column(db.Date)
 
 class Order(db.Model):
+    __tablename__ = "order"
     order_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'))
     product_id = db.Column(db.Integer, db.ForeignKey('product.product_id'))
+    product_name=db.Column(db.String)
     quantity = db.Column(db.Integer)
     total_price = db.Column(db.Float)
     order_date = db.Column(db.DateTime)
+    
 
 class Notifications(db.Model):
+    __tablename__ = "notifications"
     notification_id = db.Column(db.Integer, primary_key=True)
     farmer_id = db.Column(db.Integer, db.ForeignKey('user.user_id'))
     email = db.Column(db.String(254), unique=True)
@@ -67,3 +75,5 @@ class Notifications(db.Model):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
