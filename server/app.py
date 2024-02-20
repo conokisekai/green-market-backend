@@ -164,6 +164,24 @@ def get_all_categories():
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
     
+@app.route('/get_category/<int:category_id>', methods=['GET'])
+def get_category_by_id(category_id):
+    try:
+        category = Category.query.get(category_id)
+
+        if not category:
+            return jsonify({"error": "Category not found"}), 404
+
+        category_data = {
+            "category_id": category.category_id,
+            "category_name": category.category_name
+        }
+
+        return jsonify({"category": category_data}), 200
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
 @app.route("/create_product", methods=["POST"])
 def create_product():
     try:
@@ -214,24 +232,6 @@ def create_product():
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
     
-@app.route('/get_category/<int:category_id>', methods=['GET'])
-def get_category_by_id(category_id):
-    try:
-        category = Category.query.get(category_id)
-
-        if not category:
-            return jsonify({"error": "Category not found"}), 404
-
-        category_data = {
-            "category_id": category.category_id,
-            "category_name": category.category_name
-        }
-
-        return jsonify({"category": category_data}), 200
-
-    except Exception as e:
-        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
-
 @app.route("/get_all_products", methods=["GET"])
 def get_all_products():
     try:
