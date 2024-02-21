@@ -48,7 +48,6 @@ class Review(db.Model):
     __tablename__ = "review"
     review_id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.product_id'))
-    buyer_name = db.Column(db.String(100))
     review_text = db.Column(db.Text)
     rating = db.Column(db.Integer)
     review_date = db.Column(db.Date)
@@ -72,6 +71,12 @@ class Notifications(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'))
     message = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, index=True)
+
+class CartItem(db.Model):
+    tablename = 'cart_items'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.product_id'), nullable=False)    
 
 if __name__ == "__main__":
     app.run(debug=True)

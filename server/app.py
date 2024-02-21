@@ -2,8 +2,9 @@ from flask import Flask, jsonify, request
 from phone import send_otp
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from models import db, Product, Order, User, Review, Notifications, Category
+from models import db, Product, Order, User, Review, Notifications, Category, CartItem
 from flask_bcrypt import Bcrypt
+from datetime import datetime
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
@@ -179,8 +180,8 @@ def create_product():
             "price",
             "quantity",
             "description",
-            "category_name",  
-            "image_link",  
+            "category_name",
+            "image_link",
         ]
         for field in required_fields:
             if field not in data or not data[field]:
@@ -194,8 +195,9 @@ def create_product():
             price=data["price"],
             quantity=data["quantity"],
             description=data["description"],
-            category_name=data["category_name"],  
-            image_link=data["image_link"],  
+            category_name=data["category_name"],
+            image_link=data["image_link"],
+            # Add other required fields here
         )
         db.session.add(new_product)
         db.session.commit()
@@ -213,7 +215,7 @@ def create_product():
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
-    
+
 @app.route("/get_all_products", methods=["GET"])
 def get_all_products():
     try:
@@ -225,6 +227,9 @@ def get_all_products():
                 "product_name": product.product_name,
                 "price": product.price,
                 "quantity": product.quantity,
+                "is_out_of_stock": product.is_out_of_stock,
+                "description": product.description,
+                "image_link": product.image_link,
                 "category_name": product.category_name,
                 "user_id": product.user_id
             })
@@ -276,7 +281,7 @@ def delete_product(product_id):
 def get_all_orders():
     try:
         orders = Order.query.all()
-        orders_data = [{"user_id": order.user_id, "product_name": order.product_name, "quantity": order.quantity, "total_price": order.total_price} for order in orders]
+        orders_data = [{"user_id": order.user_id, "product_name": order.product_name, "quantity": order.quantity, "image_link": order.image_link, "total_price": order.total_price} for order in orders]
         return jsonify(orders_data), 200
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
@@ -363,22 +368,21 @@ def create_review():
         if not data:
             return jsonify({"error": "Invalid JSON data"}), 400
 
-        user_id = data.get("user_id")
         product_id = data.get("product_id")
-        rating = data.get("rating")
+        product_name = data.get("product_name")
         review_text = data.get("review_text")
-        rating_text = data.get("rating_text", "")  
+        rating = data.get("rating")
+        review_date = datetime.now().date()
 
-        if not rating_text:  #if empty
-            return jsonify({"error": True, "message": "Missing or empty rating_text"}), 400
+        if not product_id or not review_text or not rating:
+            return jsonify({"error": True, "message": "Missing required fields"}), 400
 
-        # new instance
         new_review = Review(
-            user_id=user_id,
             product_id=product_id,
-            rating=rating,
+            product_name=product_name,
             review_text=review_text,
-            rating_text=rating_text
+            rating=rating,
+            review_date=review_date
         )
 
         db.session.add(new_review)
@@ -386,10 +390,12 @@ def create_review():
 
         return jsonify(
             {
-                "user_id": new_review.user_id,
+                "review_id": new_review.review_id,
                 "product_id": new_review.product_id,
+                "product_name":new_review.product_name,
+                "review_text": new_review.review_text,
                 "rating": new_review.rating,
-                "rating_text": new_review.rating_text,
+                "review_date": new_review.review_date.strftime("%Y-%m-%d"),
             }
         ), 201
 
@@ -406,6 +412,72 @@ def delete_review(review_id):
     db.session.commit()
 
     return jsonify({"message": "Review deleted successfully"}), 200
+
+@app.route('/cartitems/<int:user_id>/<int:cart_item_id>', methods=['GET'])
+def get_cart_item(user_id, cart_item_id):
+    try:
+        user = User.query.get(user_id)
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Retrieve the cart item based on user_id and cart_item_id
+        cart_item = CartItem.query.filter_by(user_id=user.user_id, id=cart_item_id).first()
+
+        if not cart_item:
+            return jsonify({'error': 'CartItem not found or not in the cart'}), 404
+
+        product = Product.query.get(cart_item.product_id)
+
+        if not product:
+            return jsonify({'error': 'Product not found'}), 404
+
+        # Prepare the response data
+        item_data = {
+            "product_id": product.product_id,
+            "product_name": product.product_name,
+            "price": product.price,
+            "quantity": product.quantity,
+            "is_out_of_stock": product.is_out_of_stock,
+            "description": product.description,
+            "image_link": product.image_link,
+            "category_name": product.category_name,
+            "user_id": product.user_id
+        }
+
+        return jsonify({"message": "This is the response for user_id {} and cart_item_id {}".format(user_id, cart_item_id)}), 200
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
+
+@app.route("/cart", methods=["POST"])
+def add_to_cart():
+    try:
+        # Get JSON data from the request
+        data = request.get_json()
+
+        # Extract necessary fields from the JSON data
+        user_id = data.get("user_id")
+        product_id = data.get("product_id")
+
+        # Validate the presence of required fields
+        if not user_id or not product_id:
+            return jsonify({"error": True, "message": "Both user_id and product_id are required."}), 400
+
+        # Create a new CartItem object and add it to the database
+        new_cart_item = CartItem(
+            user_id=user_id,
+            product_id=product_id
+        )
+        db.session.add(new_cart_item)
+        db.session.commit()
+
+        # Return success response
+        return jsonify({"message": "Item added to cart successfully.", "cart_item_id": new_cart_item.id}), 201
+
+    except Exception as e:
+        # Handle any exceptions that might occur
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(port=4000, debug=True)
