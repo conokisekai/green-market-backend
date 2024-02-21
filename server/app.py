@@ -243,6 +243,9 @@ def get_all_products():
                 "product_name": product.product_name,
                 "price": product.price,
                 "quantity": product.quantity,
+                "is_out_of_stock": product.is_out_of_stock,
+                "description": product.description,
+                "image_link": product.image_link,
                 "category_name": product.category_name,
                 "user_id": product.user_id
             })
@@ -265,6 +268,9 @@ def get_product_by_id(product_id):
             "product_name": product.product_name,
             "price": product.price,
             "quantity": product.quantity,
+            "is_out_of_stock": product.is_out_of_stock,
+            "description": product.description,
+            "image_link": product.image_link,
             "category_name": product.category_name,
             "user_id": product.user_id
         }
