@@ -273,45 +273,139 @@ def delete_product(product_id):
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 @app.route("/orders", methods=["GET"])
-def get_orders():
-    orders = Order.query.all()
-    return jsonify([order.serialize() for order in orders]), 200
+def get_all_orders():
+    try:
+        orders = Order.query.all()
+        orders_data = [{"user_id": order.user_id, "product_name": order.product_name, "quantity": order.quantity, "total_price": order.total_price} for order in orders]
+        return jsonify(orders_data), 200
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 @app.route("/orders", methods=["POST"])
 def create_orders():
-    data = request.json
-    if not data:
-        return jsonify({"error": "Invalid JSON data"}), 400
+    try:
+        # request data in json format
+        data = request.json
+        if not data or not isinstance(data, dict):
+            return (
+                jsonify({"error": True, "message": "Invalid JSON format"}), 400
+            )
 
-    product_id = int(data.get("product_id"))
-    product_name = data.get("user_id")
-   
-    quantity = data.get("quantity")
-    parts = quantity.split(",")  # Split the string by comma
-    quantity = parts[1]  # Access the second part 30
+        # Checking if the required fields are present and not empty
+        required_fields = ["user_id", "product_id", "product_name", "quantity", "product_price"] # Changed total_price to product_price
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return (
+                    jsonify({"error": True, "message": f"Missing or empty {field}"}),
+                    400,
+                )
 
-    total_price=data.get("total_price")
-    print(product_id)
+        # extract json data
+        user_id = data.get("user_id")
+        product_id = data.get("product_id")
+        product_price = float(data.get("product_price"))  
+        quantity = data.get("quantity") ####blocker image link
 
-    product= Product.query.get(product_id)
-    if not product:
-        return jsonify({"error": "Product not found"}), 404
+        # Calculate total price correctly
+        total_price = product_price * quantity
 
-    total_price = int(product.price) * int(quantity)
+        # new instance
+        new_order = Order(
+            user_id=user_id,
+            product_id=product_id,  
+            product_name=data["product_name"],
+            quantity=quantity,
+            total_price=total_price,
+        )
+
+        db.session.add(new_order)
+        db.session.commit()
+
+        return jsonify(
+            {
+                "user_id": new_order.user_id,
+                "product_id": new_order.product_id,
+                "product_name": new_order.product_name,
+                "quantity": new_order.quantity,
+                "total_price": new_order.total_price,
+            }
+        ), 201
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
+@app.route("/orders/<int:order_id>", methods=["DELETE"])
+def delete_order(order_id):
+    try:
+        order = Order.query.get(order_id)
+
+        if not order:
+            return jsonify({"error": True, "message": "Order not found"}), 404
+
+        db.session.delete(order)
+        db.session.commit()
+
+        return jsonify({"message": "Order deleted successfully"}), 204
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 
-    new_order = Order(
-        
-        product_id=product_id,
-        product_name=product_name,
-        quantity=quantity,
-        total_price=total_price
-    )
+@app.route("/reviews", methods=["GET"])
+def get_reviews():
+    reviews = Review.query.all()
+    return jsonify([review for review in reviews]), 200
 
-    db.session.add(new_order)
+@app.route("/reviews", methods=["POST"])
+def create_review():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid JSON data"}), 400
+
+        user_id = data.get("user_id")
+        product_id = data.get("product_id")
+        rating = data.get("rating")
+        review_text = data.get("review_text")
+        rating_text = data.get("rating_text", "")  
+
+        if not rating_text:  #if empty
+            return jsonify({"error": True, "message": "Missing or empty rating_text"}), 400
+
+        # new instance
+        new_review = Review(
+            user_id=user_id,
+            product_id=product_id,
+            rating=rating,
+            review_text=review_text,
+            rating_text=rating_text
+        )
+
+        db.session.add(new_review)
+        db.session.commit()
+
+        return jsonify(
+            {
+                "user_id": new_review.user_id,
+                "product_id": new_review.product_id,
+                "rating": new_review.rating,
+                "rating_text": new_review.rating_text,
+            }
+        ), 201
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
+@app.route("/reviews/<int:review_id>", methods=["DELETE"])
+def delete_review(review_id):
+    review = Review.query.get(review_id)
+    if not review:
+        return jsonify({"error": "Review not found"}), 404
+
+    db.session.delete(review)
     db.session.commit()
 
-    return jsonify(new_order.serialize()), 201
+    return jsonify({"message": "Review deleted successfully"}), 200
 
 if __name__ == "__main__":
     app.run(port=4000, debug=True)
