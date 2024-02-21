@@ -293,43 +293,26 @@ def delete_product(product_id):
 @app.route("/update_product/<int:product_id>", methods=["PATCH"])
 def update_product(product_id):
     try:
-        data = request.json
-        new_product_name = data.get("product_name")
-        new_price = data.get("price")
-        new_quantity = data.get("quantity")
-        new_description = data.get("description")
-        new_category_name = data.get("category_name")
-        new_image_link = data.get("image_link")
-
         product = Product.query.get(product_id)
 
         if not product:
             return jsonify({"error": "Product not found"}), 404
 
-        if new_product_name:
-            product.product_name = new_product_name
+        data = request.json
+        fields_to_update = ["product_name", "price", "quantity", "description", "category_name", "image_link"]
 
-        if new_price:
-            product.price = new_price
+        for field in fields_to_update:
+            new_value = data.get(field)
+            if new_value is not None:
+                setattr(product, field, new_value)
 
-        if new_quantity:
-            product.quantity = new_quantity
-
-        if new_description:
-            product.description = new_description
-
-        if new_category_name:
-            product.category_name = new_category_name
-
-        if new_image_link:
-            product.image_link = new_image_link
-
-        db.session.commit() 
+        db.session.commit()
 
         return jsonify({"message": "Product information updated successfully"}), 200
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
     
 if __name__ == "__main__":
     app.run(port=4000, debug=True)
