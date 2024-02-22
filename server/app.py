@@ -20,6 +20,16 @@ import secrets
 from phone import send_otp
 from my_tokenizer import send_token
 
+consumer_key = "fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG"
+consumer_secret = "EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muIG"
+business_short_code = 174379
+pass_key = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+phone_number = "254703912965"
+# phone_number = "254703912965" Barclay
+web_name = "AGRI-SOKO"
+amount = "5"
+
+
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///market.db"
@@ -194,56 +204,52 @@ def delete_user(user_id):
     return jsonify({"message": "User deleted successfully"}), 200
 
 
-# stkpush#
-@app.route("/access_token", methods=["GET"])  #! get access token
-def access_token():
+def get_access_token():
     mpesa_auth_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
 
-    data = (
-        requests.get(mpesa_auth_url, auth=HTTPBasicAuth(consumer_key, consumer_secret))
-    ).json()
-    return data
+    response = requests.get(
+        mpesa_auth_url, auth=HTTPBasicAuth(consumer_key, consumer_secret)
+    )
+    data = response.json()
+    return data["access_token"]
 
 
-http = urllib3.PoolManager()
+@app.route("/access_token", methods=["GET"])
+def access_token():
+    return jsonify({"access_token": get_access_token()})
 
 
 @app.route("/stkpush", methods=["POST"])
-def stk():
+def stkpush():
+    access_token = get_access_token()
+    headers = {"Authorization": f"Bearer {access_token}"}
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
-    ac_token = access_token()
-    # print(ac_token)
-    headers = {"Authorization": f"Bearer {ac_token['access_token']}"}
-    Timestamp = datetime.now()
-    times = Timestamp.strftime("%Y%m%d%H%M%S")
-    pas = (
-        "174379"
-        + "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
-        + times
-    )
-    password = base64.b64encode(pas.encode("utf-8"))
+    password = base64.b64encode(
+        f"{business_short_code}{pass_key}{timestamp}".encode("utf-8")
+    ).decode("utf-8")
 
     payload = {
-        "BusinessShortCode": 174379,
+        "BusinessShortCode": business_short_code,#tillno$account
         "Password": password,
-        "Timestamp": times,
-        "TransactionType": "CustomerPayBill$BuygoodsOnline",
-        "Amount": 1,
-        "PartyA": 254721601031,
-        "PartyB": 174379,
-        "PhoneNumber": 254721601031,
+        "Timestamp": timestamp,
+        "TransactionType": "CustomerPayBillOnline",
+        "Amount": amount,
+        "PartyA": phone_number,
+        "PartyB": business_short_code,
+        "PhoneNumber": phone_number,
         "CallBackURL": "https://mydomain.com/path",
-        "AccountReference": "GREENMARKET",
+        "AccountReference": web_name,
         "TransactionDesc": "Payment of X",
     }
 
-    response = requests.request(
-        "POST",
+    response = requests.post(
         "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
         headers=headers,
-        data=payload,
+        json=payload,
     )
-    return response.json()
+
+    return jsonify(response.json())
 
 
 # Dictionary to store tokens and their expiration times
