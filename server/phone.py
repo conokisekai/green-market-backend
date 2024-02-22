@@ -8,7 +8,7 @@ def send_otp(phone_number, username):
     key = "AMAROWENFAITHKHALIDCONRADJIMJOHNWILLY"
     totp = pyotp.TOTP(key)
     conn = http.client.HTTPSConnection("e19152.api.infobip.com")
-
+    otp = totp
     payload = json.dumps(
         {
             "messages": [

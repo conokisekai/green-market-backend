@@ -5,6 +5,7 @@ totp = pyotp.TOTP(key)
 hotp = pyotp.HOTP(key)
 
 
+"""
 while True:
     code = input("Enter code: ")
     if totp.verify(code):
@@ -14,3 +15,4 @@ while True:
         print("Access denied")
 
 
+"""
