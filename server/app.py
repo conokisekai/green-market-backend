@@ -479,5 +479,49 @@ def add_to_cart():
         # Handle any exceptions that might occur
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
+
+@app.route('/cartitems/<int:cart_item_id>', methods=['DELETE'])
+def remove_cart_item(cart_item_id):
+    cart_item = CartItem.query.get(cart_item_id)
+
+    if not cart_item:
+        return jsonify({'error': 'CartItem not found'}), 404
+    
+    # Remove the item from the cart
+    db.session.delete(cart_item)
+    db.session.commit()
+    
+    return jsonify({'message': 'Item removed from the cart successfully'}), 200
+
+@app.route('/cartitems/<int:user_id>', methods=['GET'])
+def get_cart_items(user_id):
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    # Retrieve the items in the user's cart
+    cart_items = CartItem.query.filter_by(user_id=user.user_id).all()
+    
+    # Prepare the response data
+    items_data = []
+    for item in cart_items:
+        product = Product.query.get(item.product_id)
+        items_data.append({
+            "id": item.id,
+            "product_id": product.product_id,
+            "product_name": product.product_name,
+            "price": product.price,
+            "quantity": product.quantity,
+            "is_out_of_stock": product.is_out_of_stock,
+            "description": product.description,
+            "image_link": product.image_link,
+            "category_name": product.category_name,
+            "user_id": product.user_id
+            # Add other details as needed
+        })
+    
+    return jsonify({'cart_items': items_data}), 200
+    
 if __name__ == "__main__":
     app.run(port=4000, debug=True)
