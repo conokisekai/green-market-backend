@@ -18,122 +18,6 @@ def home():
     data = {"Server side": "Checkers"}
     return jsonify(data), 200
 
-@app.route("/user_signup", methods=["POST"])
-def create_user():
-    try:
-        data = request.get_json()
-        if not data or not isinstance(data, dict):
-            return (
-                jsonify({"error": True, "message": "Invalid JSON data in request"}),
-                400,
-            )
-
-        required_fields = ["username", "password", "email", "phone", "address"]
-        for field in required_fields:
-            if field not in data or not data[field]:
-                return (
-                    jsonify({"error": True, "message": f"Missing or empty {field}"}),
-                    400,
-                )
-
-        hashed_password = bcrypt.generate_password_hash(data["password"]).decode(
-            "utf-8"
-        )
-        new_user = User(
-            username=data["username"],
-            password=hashed_password,
-            email=data["email"],
-            phone=data["phone"],
-            address=data["address"],
-             role=data["role"],
-        )
-        db.session.add(new_user)
-        db.session.commit()
-
-        # Send OTP only once after adding the user
-        send_otp(data["phone"], data["username"])
-
-        return (
-            jsonify(
-                {
-                    "id": new_user.user_id,
-                    "name": new_user.username,
-                    "OTP sent": True,
-                }
-            ),
-            201,
-        )
-
-    except Exception as e:
-        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
-
-@app.route("/user_login", methods=["POST"])
-def user_login():
-    try:
-        data = request.get_json()
-        if not data or not any(key in data for key in ["username", "phone", "email"]) or "password" not in data:
-            return jsonify({"error": True, "message": "Invalid request data"}), 400
-
-        username = data.get("username")
-        phone = data.get("phone")
-        email = data.get("email")
-        password = data["password"]
-
-        # Fetch the user based on provided username, phone, or email
-        user = User.query.filter(
-            (User.username == username) |
-            (User.phone == phone) |
-            (User.email == email)
-        ).first()
-
-        if not user or not bcrypt.check_password_hash(user.password, password):
-            return jsonify({"error": True, "message": "Invalid username, phone, email, or password"}), 401
-
-        return jsonify({
-            "message": "Login successful",
-            "user_type": "user",
-            "username": user.username
-        }), 200
-
-    except Exception as e:
-        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
-
-@app.route("/del_user_login/<user_id>", methods=["DELETE"])
-def delete_user(user_id):
-    user = User.query.filter_by(user_id=user_id).first()
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
-    db.session.delete(user)
-    db.session.commit()
-
-    return jsonify({"message": "User deleted successfully"}), 200
-
-@app.route("/update_user/<int:user_id>", methods=["PATCH"])
-def patch_user(user_id):
-    try:
-        data = request.json
-        new_username = data.get("username")
-        new_password = data.get("password")
-
-        user = User.query.get(user_id)
-
-        if not user:
-            return jsonify({"error": "User not found"}), 404
-
-        if new_username:
-            user.username = new_username
-
-        if new_password:
-            user.password = new_password
-
-        db.session.commit()
-
-        return jsonify({"message": "User information updated successfully"}), 200
-
-    except Exception as e:
-        return jsonify({"error": "An error occurred"}), 500
-    
 @app.route('/create_category', methods=['POST'])
 def create_category():
     try:
@@ -176,12 +60,14 @@ def create_product():
             )
 
         required_fields = [
+            "user_id",
             "product_name",
             "price",
             "quantity",
             "description",
             "category_name",
             "image_link",
+            
         ]
         for field in required_fields:
             if field not in data or not data[field]:
@@ -189,30 +75,39 @@ def create_product():
                     jsonify({"error": True, "message": f"Missing or empty {field}"}),
                     400,
                 )
+        # extract json data
+        user_id = data.get("user_id")
+
 
         new_product = Product(
+            user_id=user_id,
             product_name=data["product_name"],
             price=data["price"],
             quantity=data["quantity"],
             description=data["description"],
             category_name=data["category_name"],
             image_link=data["image_link"],
+            
             # Add other required fields here
         )
         db.session.add(new_product)
         db.session.commit()
 
         return (
-            jsonify(
                 {
+                    "user_id":new_product.user_id,
                     "product_id": new_product.product_id,
                     "product_name": new_product.product_name,
+                    "image_link":new_product.image_link,
+                    "category_name":new_product.category_name,
+                    "quantity":new_product.quantity,
+                    "price":new_product.price,
+                    "description":new_product.description,
                     "message": "Product created successfully",
                 }
-            ),
-            201,
-        )
-
+            ),201,
+            
+        return jsonify({"new_product": new_product_data}), 200
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
@@ -276,7 +171,29 @@ def delete_product(product_id):
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+@app.route("/get_product_user_id/<int:user_id>", methods=["GET"])
+def get_product_by_user_id(user_id):
+    try:
+        products = Product.query.filter_by(user_id=user_id).all()
 
+        if not products:
+            return jsonify({"error": "Products not found for the given user_id"}), 404
+
+        product_data = []
+        for product in products:
+            product_data.append({
+                "product_id": product.product_id,
+                "product_name": product.product_name,
+                "price": product.price,
+                "quantity": product.quantity,
+                "category_name": product.category_name,
+                "user_id": product.user_id
+            })
+
+        return jsonify({"products": product_data}), 200
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 @app.route("/orders", methods=["GET"])
 def get_all_orders():
     try:
@@ -522,6 +439,6 @@ def get_cart_items(user_id):
         })
     
     return jsonify({'cart_items': items_data}), 200
-    
+
 if __name__ == "__main__":
     app.run(port=4000, debug=True)
