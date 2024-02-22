@@ -1,15 +1,16 @@
-from flask import Flask, jsonify, request,make_response
-import json,requests
+from flask import Flask, jsonify, request, make_response
+import json, requests
 from requests.auth import HTTPBasicAuth
 from passlib.hash import sha256_crypt
-import base64,urllib3
+import base64, urllib3
 from phone import send_otp
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from models import db, Product, Order, User, Review, Notifications, Category, CartItem
 from flask_bcrypt import Bcrypt
 from sqlalchemy.exc import IntegrityError
-from  werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
+
 # imports for PyJWT authentication
 import jwt
 from datetime import datetime, timedelta
@@ -27,8 +28,9 @@ migrate = Migrate(app, db)
 db.init_app(app)
 
 # config secret key
-consumer_key='fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG'
-consumer_secret='EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muIG'
+consumer_key = "fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG"
+consumer_secret = "EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muIG"
+
 
 @app.route("/")
 def home():
@@ -87,6 +89,7 @@ def create_user():
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
+
 #! update
 @app.route("/user_login", methods=["POST"])
 def user_login():
@@ -136,35 +139,34 @@ def user_login():
 
 #!  update
 
+
 # decorator for verifying the JWT
 def token_required(token):
     @wraps(token)
     def decorated():
         token = token
         # jwt is passed in the request header
-        if 'x-access-token' in request.headers:
-            token = request.headers['x-access-token']
+        if "x-access-token" in request.headers:
+            token = request.headers["x-access-token"]
         # return 401 if token is not passed
         if not token:
-            return jsonify({'message' : 'Token is missing !!'}), 401
-  
+            return jsonify({"message": "Token is missing !!"}), 401
+
         try:
             # decoding the payload to fetch the stored details
-            data = jwt.decode(token, algorithm="HS256" )
-            current_user = User.query\
-                .filter_by(id = data['user_id'])\
-                .first()
+            data = jwt.decode(token, algorithm="HS256")
+            current_user = User.query.filter_by(id=data["user_id"]).first()
         except:
-            return jsonify({
-                'message' : 'Token is invalid !!'
-            }), 401
+            return jsonify({"message": "Token is invalid !!"}), 401
         # returns the current logged in users context to the routes
-        return  (current_user)
-  
+        return current_user
+
     return decorated
-@app.route('/users', methods =['GET'])
+
+
+@app.route("/users", methods=["GET"])
 def get_all_users():
-    
+
     # querying the database
     # for all the entries in it
     users = User.query.all()
@@ -172,18 +174,14 @@ def get_all_users():
     # to list of jsons
     output = []
     for user in users:
-        # appending the user data json 
+        # appending the user data json
         # to the response list
-        output.append({
-            'name' : user.username,
-            'email' : user.email,
-            'id': user.user_id
-        })
-  
-    return jsonify({'users': output})
+        output.append({"name": user.username, "email": user.email, "id": user.user_id})
+
+    return jsonify({"users": output})
+
 
 @app.route("/delete_user/<user_id>", methods=["DELETE"])
-
 def delete_user(user_id):
     user = User.query.filter_by(user_id=user_id).first()
 
@@ -195,45 +193,58 @@ def delete_user(user_id):
 
     return jsonify({"message": "User deleted successfully"}), 200
 
+
 # stkpush#
-@app.route('/access_token')
+@app.route("/access_token", methods=["GET"])  #! get access token
 def access_token():
-    mpesa_auth_url='https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
+    mpesa_auth_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
 
-    data=(requests.get(mpesa_auth_url,auth=HTTPBasicAuth(consumer_key, consumer_secret))).json()
+    data = (
+        requests.get(mpesa_auth_url, auth=HTTPBasicAuth(consumer_key, consumer_secret))
+    ).json()
     return data
-http=urllib3.PoolManager()
-@app.route('/stkpush', methods=['POST'])
-def stk():
-    
-    
-    ac_token = access_token()
-    print(ac_token)
-    headers={
-        'Authorization': f'Bearer sj3oo0OTILF9idf83DI1o5DCmvpL' 
-        }
-    Timestamp = datetime.now() 
-    times = Timestamp.strftime( '%Y%m%d%H%M%S' )
-    pas = '174379' + 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919' + times
-    password= base64.b64encode(pas.encode('utf-8'))
 
+
+http = urllib3.PoolManager()
+
+
+@app.route("/stkpush", methods=["POST"])
+def stk():
+
+    ac_token = access_token()
+    # print(ac_token)
+    headers = {"Authorization": f"Bearer {ac_token['access_token']}"}
+    Timestamp = datetime.now()
+    times = Timestamp.strftime("%Y%m%d%H%M%S")
+    pas = (
+        "174379"
+        + "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+        + times
+    )
+    password = base64.b64encode(pas.encode("utf-8"))
 
     payload = {
         "BusinessShortCode": 174379,
         "Password": password,
         "Timestamp": times,
-        "TransactionType": "CustomerPayBillOnline",
+        "TransactionType": "CustomerPayBill$BuygoodsOnline",
         "Amount": 1,
-        "PartyA": 254768171426,
+        "PartyA": 254721601031,
         "PartyB": 174379,
-        "PhoneNumber": 254768171426,
+        "PhoneNumber": 254721601031,
         "CallBackURL": "https://mydomain.com/path",
         "AccountReference": "GREENMARKET",
-        "TransactionDesc": "Payment of X" 
+        "TransactionDesc": "Payment of X",
     }
 
-    response = requests.request("POST", 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', headers = headers, data = payload)
+    response = requests.request(
+        "POST",
+        "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+        headers=headers,
+        data=payload,
+    )
     return response.json()
+
 
 # Dictionary to store tokens and their expiration times
 token_dict = {}  # ?3min
