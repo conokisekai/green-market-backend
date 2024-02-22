@@ -87,49 +87,55 @@ def create_user():
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
-
+#! update
 @app.route("/user_login", methods=["POST"])
 def user_login():
     auth = request.form
-    if not auth or not auth.get('email') or not auth.get('password'):
+    if not auth or not auth.get("email") or not auth.get("password"):
         # returns 401 if any email or / and password is missing
         return make_response(
-            'Could not verify! Missing email or password.',
+            "Could not verify! Missing email or password.",
             401,
-            {'WWW-Authenticate' : 'Basic realm ="Login required !!"'}
+            {"WWW-Authenticate": 'Basic realm ="Login required !!"'},
         )
-  
-    user = User.query.filter_by(email = auth.get('email')).first()
-  
+
+    user = User.query.filter_by(email=auth.get("email")).first()
+
     if not user:
         # returns 401 if user does not exist
         return make_response(
-            'Could not verify! User does not exist',
+            "Could not verify! User does not exist",
             401,
-            {'WWW-Authenticate' : 'Basic realm ="User does not exist !!"'}
+            {"WWW-Authenticate": 'Basic realm ="User does not exist !!"'},
         )
-    if  (user.password, auth.get('password')):
+
+    if bcrypt.check_password_hash(user.password, auth.get("password")):
         # generates the JWT Token
-            token = jwt.encode({
-                'id': user.user_id,
-                'name':user.username,
-                'email':user.email,
-                'phone':user.phone
-                
-                
-            }, "secret", algorithm="HS256")
-  
-            return make_response(jsonify({
-                'token' : token,
-                'name': user.username,
-                'email':user.email
-                }), 201)
-        # returns 403 if password is wrong
-    return make_response(
-            'Could not verify! Wrong password',
-            403,
-            {'WWW-Authenticate' : 'Basic realm ="Wrong Password !!"'}
+        token = jwt.encode(
+            {
+                "id": user.user_id,
+                "name": user.username,
+                "email": user.email,
+                "phone": user.phone,
+            },
+            "secret",
+            algorithm="HS256",
         )
+
+        return make_response(
+            jsonify({"token": token, "name": user.username, "email": user.email}), 201
+        )
+
+    # returns 403 if password is wrong
+    return make_response(
+        "Could not verify! Wrong password",
+        403,
+        {"WWW-Authenticate": 'Basic realm ="Wrong Password !!"'},
+    )
+
+
+#!  update
+
 # decorator for verifying the JWT
 def token_required(token):
     @wraps(token)
