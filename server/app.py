@@ -132,9 +132,9 @@ def user_login():
             {'WWW-Authenticate' : 'Basic realm ="Wrong Password !!"'}
         )
 # decorator for verifying the JWT
-def token_required():
-    @wraps(f)
-    def decorated(*args, **kwargs):
+def token_required(token):
+    @wraps(token)
+    def decorated():
         token = token
         # jwt is passed in the request header
         if 'x-access-token' in request.headers:
@@ -154,11 +154,10 @@ def token_required():
                 'message' : 'Token is invalid !!'
             }), 401
         # returns the current logged in users context to the routes
-        return  f(current_user, *args, **kwargs)
+        return  (current_user)
   
     return decorated
 @app.route('/users', methods =['GET'])
-@token_required()
 def get_all_users():
     
     # querying the database
