@@ -22,6 +22,7 @@ qrcode = "*"
 flask-bcrypt = "*"
 pyjwt = "*"
 requests = "*"
+passlib = "*"
 
 [dev-packages]
 

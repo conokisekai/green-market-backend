@@ -115,6 +115,7 @@ def user_login():
                 'id': user.user_id,
                 'name':user.username,
                 'email':user.email,
+                'phone':user.phone
                 
                 
             }, "secret", algorithm="HS256")
@@ -131,7 +132,7 @@ def user_login():
             {'WWW-Authenticate' : 'Basic realm ="Wrong Password !!"'}
         )
 # decorator for verifying the JWT
-def token_required(f):
+def token_required():
     @wraps(f)
     def decorated(*args, **kwargs):
         token = token
@@ -157,6 +158,7 @@ def token_required(f):
   
     return decorated
 @app.route('/users', methods =['GET'])
+@token_required()
 def get_all_users():
     
     # querying the database
@@ -230,8 +232,7 @@ def stk():
     ac_token = access_token()
     print(ac_token)
     headers={
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {ac_token}' 
+        'Authorization': f'Bearer sj3oo0OTILF9idf83DI1o5DCmvpL' 
         }
     Timestamp = datetime.now() 
     times = Timestamp.strftime( '%Y%m%d%H%M%S' )
@@ -253,62 +254,8 @@ def stk():
         "TransactionDesc": "Payment of X" 
     }
 
-    response = http.request("POST", 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', headers = headers, body = payload)
+    response = requests.request("POST", 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', headers = headers, data = payload)
     return response.json()
-
-"""
-    try:
-        data = request.get_json()
-        if not data or not any(key in data for key in ["username", "phone", "email"]) or "password" not in data:
-            return jsonify({"error": True, "message": "Invalid request data"}), 400
-
-        username = data.get("username")
-        phone = data.get("phone")
-        email = data.get("email")
-        password = data["password"]
-
-        # Fetch the user based on provided username, phone, or email
-        user = User.query.filter(
-            (User.username == username) |
-            (User.phone == phone) |
-            (User.email == email)
-        ).first()
-
-        if check_password_hash(user.password, auth.get('password')):
-        # generates the JWT Token
-            token = jwt.encode({
-                'id': user.id,
-                'exp' : datetime.utcnow() + timedelta(minutes = 30)
-            }, app.config['SECRET_KEY'])
-  
-            return make_response(jsonify({'token' : token.decode('UTF-8')}), 201)
-        # returns 403 if password is wrong
-        return make_response(
-            'Could not verify',
-            403,
-            {'WWW-Authenticate' : 'Basic realm ="Wrong Password !!"'}
-        )
-        
-        if not user or not bcrypt.check_password_hash(user.password, password):
-            return jsonify({"error": True, "message": "Invalid username, phone, email, or password"}), 401
-
-        return (
-            jsonify(
-                {
-                    "message": "Login successful",
-                    "user_type": "user",
-                    "username": user.username,
-                }
-            ),
-            200,
-        )
-        except Exception as e:
-        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
-    
-    """
-    
-
-
 
 @app.route("/del_user_login/<user_id>", methods=["DELETE"])
 def delete(user_id):
