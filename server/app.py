@@ -24,7 +24,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 migrate = Migrate(app, db)
 db.init_app(app)
 
-#config secret key
+# config secret key
 consumer_key='fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG'
 consumer_secret='EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muIG'
 
@@ -32,6 +32,7 @@ consumer_secret='EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muI
 def home():
     data = {"Server side": "Checkers"}
     return jsonify(data), 200
+
 
 @app.route("/user_signup", methods=["POST"])
 def create_user():
@@ -50,44 +51,40 @@ def create_user():
                     jsonify({"error": True, "message": f"Missing or empty {field}"}),
                     400,
                 )
-        
+
         hashed_password = bcrypt.generate_password_hash(data["password"]).decode(
             "utf-8"
         )
-        h = sha256_crypt.encrypt(data["password"])
-        
         new_user = User(
             username=data["username"],
-            password=data['password'],
+            password=hashed_password,
             email=data["email"],
             phone=data["phone"],
             address=data["address"],
-             role=data["role"],
+            role=data["role"],
         )
         db.session.add(new_user)
         db.session.commit()
 
-        # Send OTP only once after adding the user
-        send_otp(data["phone"], data["username"])
+        try:
+            otp_value = send_otp(data["phone"], data["username"])
+        except Exception as e:
+            otp_value = None
 
-
-        new_user_data = {
-            
-        'New_user_data':
-        
-          {
-            'id':new_user.user_id ,
-            'name': new_user.username,
-            'address': new_user.address, 
-            'contact': new_user.phone,
-            'role': new_user.role,
-            
-        }
-    }
-        return jsonify(new_user_data),201
+        return (
+            jsonify(
+                {
+                    "user_id": new_user.user_id,
+                    "username": new_user.username,
+                    "OTP_sent": otp_value,
+                }
+            ),
+            201,
+        )
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
 
 @app.route("/user_login", methods=["POST"])
 def user_login():
@@ -176,7 +173,7 @@ def get_all_users():
         })
   
     return jsonify({'users': output})
-  
+
 @app.route("/delete_user/<user_id>", methods=["DELETE"])
 
 def delete_user(user_id):
@@ -190,33 +187,7 @@ def delete_user(user_id):
 
     return jsonify({"message": "User deleted successfully"}), 200
 
-@app.route("/update_user/<int:user_id>", methods=["PATCH"])
-def patch_user(user_id):
-    try:
-        data = request.json
-
-        new_username = data.get("username")
-        new_password = data.get("password")
-
-        user = User.query.get(user_id)
-
-        if not user:
-            return jsonify({"error": "User not found"}), 404
-
-        if new_username:
-            user.username = new_username
-
-        if new_password:
-            user.password = new_password
-
-        db.session.commit()
-
-        return jsonify({"message": "User information updated successfully"}), 200
-
-    except Exception as e:
-        return jsonify({"error": "An error occurred"}), 500
-    
-#stkpush#
+# stkpush#
 @app.route('/access_token')
 def access_token():
     mpesa_auth_url='https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
@@ -256,18 +227,75 @@ def stk():
     response = requests.request("POST", 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', headers = headers, data = payload)
     return response.json()
 
-@app.route("/del_user_login/<user_id>", methods=["DELETE"])
-def delete(user_id):
-    user = User.query.filter_by(user_id=user_id).first()
+# Dictionary to store tokens and their expiration times
+token_dict = {}  # ?3min
 
-    if not user:
-        return jsonify({"error": "User not found"}), 404
 
-    db.session.delete(user)
-    db.session.commit()
+@app.route("/forgot_password", methods=["POST"])
+def forgot_password():
+    try:
+        data = request.get_json()
+        if not data or "email" not in data:
+            return jsonify({"error": True, "message": "Email is required"}), 400
 
-    return jsonify({"message": "user deleted successfully"}), 200
+        email = data["email"]
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({"error": True, "message": "Email not found"}), 404
 
+        token = send_token(user.phone, user.username)
+        token_dict[user.phone] = token  # Store the token in the dictionary
+
+        return jsonify({"message": "Token sent successfully", "token": token}), 200
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
+
+@app.route("/reset_password", methods=["PATCH"])
+def reset_password():
+    try:
+        data = request.get_json()
+        if not data or not isinstance(data, dict):
+            return (
+                jsonify({"error": True, "message": "Invalid JSON data in request"}),
+                400,
+            )
+
+        token = data.get("token")
+        new_password = data.get("new_password")
+        email = data.get("email")  # Get the email from the request data
+
+        if not token or not new_password or not email:
+            return (
+                jsonify(
+                    {
+                        "error": True,
+                        "message": "Token, email, and new_password are required",
+                    }
+                ),
+                400,
+            )
+
+        # Verify if the token is valid
+        user = User.query.filter_by(email=email).first()
+        if not user or token != token_dict.get(user.phone):
+            return jsonify({"error": True, "message": "Invalid or expired token"}), 400
+
+        # Hash the new password
+        hashed_password = bcrypt.generate_password_hash(new_password).decode("utf-8")
+
+        # Update the user's password in the database with hashed_password
+        user.password = hashed_password
+        db.session.commit()  # Commit the changes to the database
+
+        # Remove the token from the dictionary
+        del token_dict[user.phone]
+
+        return jsonify({"message": "Password reset successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 
 if __name__ == "__main__":
