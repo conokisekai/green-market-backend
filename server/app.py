@@ -15,7 +15,9 @@ import jwt
 from datetime import datetime, timedelta
 from functools import wraps
 from models import User
-
+import secrets
+from phone import send_otp
+from my_tokenizer import send_token
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
