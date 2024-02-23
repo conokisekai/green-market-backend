@@ -27,7 +27,9 @@ db.init_app(app)
 #config secret key
 consumer_key='fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG'
 consumer_secret='EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muIG'
-
+business_short_code = "174379"
+phone_number = "254729566037"
+web_name = "AGRI-SOKO"
 @app.route("/")
 def home():
     data = {"Server side": "Checkers"}
@@ -215,47 +217,54 @@ def patch_user(user_id):
 
     except Exception as e:
         return jsonify({"error": "An error occurred"}), 500
-    
-#stkpush#
-@app.route('/access_token')
-def access_token():
-    mpesa_auth_url='https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
 
-    data=(requests.get(mpesa_auth_url,auth=HTTPBasicAuth(consumer_key, consumer_secret))).json()
-    return data
+
+   
+#stkpush#
+
 http=urllib3.PoolManager()
+def get_access_token():
+    mpesa_auth_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+
+    response = requests.get(
+        mpesa_auth_url, auth=HTTPBasicAuth(consumer_key, consumer_secret)
+    )
+    data = response.json()
+    return data["access_token"]
+@app.route("/access_token", methods=["GET"])
+def access_token():
+    return jsonify({"access_token": get_access_token()})
+
 @app.route('/stkpush', methods=['POST'])
 def stk():
+    access_token = get_access_token()
+    headers = {"Authorization": f"Bearer {access_token}"}
+    Timestamp = datetime.now().strftime( '%Y%m%d%H%M%S' )
     
-    
-    ac_token = access_token()
-    print(ac_token)
-    headers={
-        'Authorization': f'Bearer sj3oo0OTILF9idf83DI1o5DCmvpL' 
-        }
-    Timestamp = datetime.now() 
-    times = Timestamp.strftime( '%Y%m%d%H%M%S' )
-    pas = '174379' + 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919' + times
-    password= base64.b64encode(pas.encode('utf-8'))
-
+    pas = '174379' + 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919' + Timestamp
+    password= base64.b64encode(pas.encode('utf-8')).decode("utf-8")
 
     payload = {
-        "BusinessShortCode": 174379,
-        "Password": password,
-        "Timestamp": times,
-        "TransactionType": "CustomerPayBillOnline",
-        "Amount": 1,
-        "PartyA": 254768171426,
-        "PartyB": 174379,
-        "PhoneNumber": 254768171426,
-        "CallBackURL": "https://mydomain.com/path",
-        "AccountReference": "GREENMARKET",
-        "TransactionDesc": "Payment of X" 
+    "BusinessShortCode": business_short_code,
+    "Password": password,
+    "Timestamp": Timestamp,
+    "TransactionType": "CustomerPayBillOnline",
+    "Amount": 50,
+    "PartyA": phone_number,
+    "PartyB": business_short_code,
+    "PhoneNumber": phone_number,
+    "CallBackURL": "https://mydomain.com/path",
+    "AccountReference": web_name,
+    "TransactionDesc": "Payment of X",
     }
 
-    response = requests.request("POST", 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', headers = headers, data = payload)
-    return response.json()
+    response = requests.post(
+        "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+        headers=headers,
+        json=payload,
+    )
 
+    return jsonify(response.json())
 @app.route("/del_user_login/<user_id>", methods=["DELETE"])
 def delete(user_id):
     user = User.query.filter_by(user_id=user_id).first()
