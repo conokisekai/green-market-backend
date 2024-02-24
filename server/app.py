@@ -329,7 +329,6 @@ def delete_review(review_id):
     db.session.commit()
 
     return jsonify({"message": "Review deleted successfully"}), 200
-
 @app.route('/cartitems/<int:user_id>/<int:cart_item_id>', methods=['GET'])
 def get_cart_item(user_id, cart_item_id):
     try:
@@ -376,25 +375,48 @@ def add_to_cart():
         # Extract necessary fields from the JSON data
         user_id = data.get("user_id")
         product_id = data.get("product_id")
+        quantity = data.get("quantity", 1)  # Default to 1 if quantity is not provided
 
         # Validate the presence of required fields
         if not user_id or not product_id:
             return jsonify({"error": True, "message": "Both user_id and product_id are required."}), 400
 
-        # Create a new CartItem object and add it to the database
-        new_cart_item = CartItem(
-            user_id=user_id,
-            product_id=product_id
-        )
-        db.session.add(new_cart_item)
+        # Fetch product details from the database based on product_id
+        product = Product.query.get(product_id)
+
+        # Validate if the product exists
+        if not product:
+            return jsonify({"error": True, "message": "Product not found."}), 404
+
+        # Check if the product is already in the user's cart
+        existing_cart_item = CartItem.query.filter_by(user_id=user_id, product_id=product_id).first()
+
+        if existing_cart_item:
+            # Update quantity and total price if the product is already in the cart
+            existing_cart_item.quantity += quantity
+            existing_cart_item.total_price += product.price * quantity
+        else:
+            # Calculate total price
+            total_price = product.price * quantity
+
+            # Create a new CartItem object and add it to the database
+            new_cart_item = CartItem(
+                user_id=user_id,
+                product_id=product_id,
+                quantity=quantity,
+                total_price=total_price
+            )
+            db.session.add(new_cart_item)
+
         db.session.commit()
 
         # Return success response
-        return jsonify({"message": "Item added to cart successfully.", "cart_item_id": new_cart_item.id}), 201
+        return jsonify({"message": "Item added to cart successfully."}), 201
 
     except Exception as e:
         # Handle any exceptions that might occur
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
 
 
 @app.route('/cartitems/<int:cart_item_id>', methods=['DELETE'])
@@ -412,6 +434,35 @@ def remove_cart_item(cart_item_id):
 
 @app.route('/cartitems/<int:user_id>', methods=['GET'])
 def get_cart_items(user_id):
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    # Retrieve the items in the user's cart
+    cart_items = CartItem.query.filter_by(user_id=user.user_id).all()
+    
+    # Prepare the response data
+    items_data = []
+    for item in cart_items:
+        product = Product.query.get(item.product_id)
+        items_data.append({
+            "id": item.id,
+            "product_id": product.product_id,
+            "product_name": product.product_name,
+            "quantity": item.quantity,
+            "price":product.price,
+            "total_price": item.total_price,
+            "quantity": item.quantity,
+            "is_out_of_stock": product.is_out_of_stock,
+            "description": product.description,
+            "image_link": product.image_link,
+            "category_name": product.category_name,
+            "user_id": product.user_id
+            # Add other details as needed
+        })
+    
+    return jsonify({'cart_items': items_data}), 200
     user = User.query.get(user_id)
 
     if not user:

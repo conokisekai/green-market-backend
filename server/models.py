@@ -16,6 +16,7 @@ class User(db.Model):
     ]
 
     user_id = db.Column(db.Integer, primary_key=True)
+    image_url=db.Column(db.String(500))
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
     email = db.Column(db.String(100), nullable=False)
@@ -76,7 +77,9 @@ class CartItem(db.Model):
     tablename = 'cart_items'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('product.product_id'), nullable=False)    
+    product_id = db.Column(db.Integer, db.ForeignKey('product.product_id'), nullable=False)
+    quantity = db.Column(db.Integer, default=1) 
+    total_price = db.Column(db.Float)
 
 if __name__ == "__main__":
     app.run(debug=True)
