@@ -1,17 +1,30 @@
 import http.client
 import json
-import pyotp
+import secrets
 import logging
 from datetime import datetime, timedelta
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
+# Dictionary to store tokens and their expiration times
+token_dict = {}
 
-def send_otp(phone_number, username):
-    logging.debug("Sending OTP...")
-    key = "AMAROWENFAITHKHALIDCONRADJIMJOHNWILLY"
-    totp = pyotp.TOTP(key, interval=30)  # Use a 30-second interval for TOTP
+
+def generate_token():
+    token = secrets.token_urlsafe(6)
+    expiration_time = datetime.now() + timedelta(minutes=3)
+    return token, expiration_time
+
+
+def send_token(phone_number, username):
+    logging.debug("Sending token...")
+    if phone_number in token_dict and datetime.now() < token_dict[phone_number][1]:
+        token = token_dict[phone_number][0]
+    else:
+        token, expiration_time = generate_token()
+        token_dict[phone_number] = (token, expiration_time)
+
     conn = http.client.HTTPSConnection("e19152.api.infobip.com")
 
     payload = json.dumps(
@@ -20,7 +33,7 @@ def send_otp(phone_number, username):
                 {
                     "destinations": [{"to": phone_number}],
                     "from": "ServiceSMS",
-                    "text": f"Agri-Soko 🥀,\n\nThis is a message from Agri-Soko Team 👨‍🌾 \n\n{username}, your OTP is {totp.now()}.",
+                    "text": f"Agri-Soko 🥀,\n\nThis is a message from Agri-Soko Team 👨‍🌾 \n\n{username}, your token is {token}.",
                 }
             ]
         }
@@ -37,17 +50,6 @@ def send_otp(phone_number, username):
         res = conn.getresponse()
         data = res.read()
         logging.debug(data.decode("utf-8"))
-
-        # Log success
-        if res.status == 200:
-            otp_value = totp.now()
-            logging.info(f"OTP sent successfully to {phone_number}: {otp_value}")
-            return otp_value
-        else:
-            logging.error(
-                f"Failed to send OTP to {phone_number}: {res.status} - {res.reason}"
-            )
-            return None
+        return token  # Return the token if the SMS is sent successfully
     except Exception as e:
         logging.error(f"An error occurred: {str(e)}")
-        return None

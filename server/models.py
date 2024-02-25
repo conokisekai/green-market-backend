@@ -5,18 +5,22 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///market.db'
 db = SQLAlchemy(app)
 
+
 class User(db.Model):
     __tablename__ = "user"
     ROLE_BUYER = 'buyer'
     ROLE_SELLER = 'seller'
+    ROLE_ADMIN='admin'
 
     ROLE_CHOICES = [
         (ROLE_BUYER, 'Buyer'),
         (ROLE_SELLER, 'Seller'),
+        (ROLE_ADMIN, 'admin'),
+
     ]
 
     user_id = db.Column(db.Integer, primary_key=True)
-    image_url=db.Column(db.String(500))
+    image_link = db.Column(db.String(500))
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
     email = db.Column(db.String(100), nullable=False)
@@ -53,15 +57,18 @@ class Review(db.Model):
     rating = db.Column(db.Integer)
     review_date = db.Column(db.Date)
 
+from datetime import datetime
+
 class Order(db.Model):
     __tablename__ = "order"
     order_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'))
     product_id = db.Column(db.Integer, db.ForeignKey('product.product_id'))
-    product_name=db.Column(db.String)
+    product_name = db.Column(db.String)
     quantity = db.Column(db.Integer)
     total_price = db.Column(db.Float)
-    order_date = db.Column(db.DateTime)
+    order_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
     
 
 class Notifications(db.Model):

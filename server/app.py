@@ -1,10 +1,35 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, make_response
+import json, requests
+from requests.auth import HTTPBasicAuth
+from passlib.hash import sha256_crypt
+import base64, urllib3
 from phone import send_otp
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from models import db, Product, Order, User, Review, Notifications, Category, CartItem
 from flask_bcrypt import Bcrypt
-from datetime import datetime
+from sqlalchemy.exc import IntegrityError
+from werkzeug.security import generate_password_hash, check_password_hash
+
+import jwt
+from datetime import datetime, timedelta
+from functools import wraps
+from models import User
+import secrets
+from phone import send_otp
+from my_tokenizer import send_token
+
+
+
+consumer_key = "fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG"
+consumer_secret = "EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muIG"
+business_short_code = 174379
+pass_key = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+
+phone_number = "254721601031"
+web_name = "AGRI-SOKO"
+amount = "1"
+
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
@@ -13,10 +38,293 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 migrate = Migrate(app, db)
 db.init_app(app)
 
+# config secret key
+consumer_key = "fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG"
+consumer_secret = "EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muIG"
+
+date_today = datetime.today().strftime("%Y, %m, %d")
+
 @app.route("/")
 def home():
     data = {"Server side": "Checkers"}
     return jsonify(data), 200
+
+
+@app.route("/user_signup", methods=["POST"])
+def create_user():
+    try:
+        data = request.get_json()
+        if not data or not isinstance(data, dict):
+            return (
+                jsonify({"error": True, "message": "Invalid JSON data in request"}),
+                400,
+            )
+
+        required_fields = ["username", "password", "email", "phone", "address","image_link"]
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return (
+                    jsonify({"error": True, "message": f"Missing or empty {field}"}),
+                    400,
+                )
+
+        hashed_password = bcrypt.generate_password_hash(data["password"]).decode(
+            "utf-8"
+        )
+        new_user = User(
+            username=data["username"],
+            password=hashed_password,
+            email=data["email"],
+            phone=data["phone"],
+            address=data["address"],
+            image_link=data["image_link"],
+            role=data["role"],
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
+        try:
+            otp_value = send_otp(data["phone"], data["username"])
+        except Exception as e:
+            otp_value = None
+
+        return (
+            jsonify(
+                {
+                    "user_id": new_user.user_id,
+                    "username": new_user.username,
+                    "OTP_sent": otp_value,
+                }
+            ),
+            201,
+        )
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
+
+#! update
+@app.route("/user_login", methods=["POST"])
+def user_login():
+    auth = request.get_json()
+    if not auth or not auth.get("email") or not auth.get("password"):
+        # returns 401 if any email or / and password is missing
+        return make_response(
+            "Could not verify! Missing email or password.",
+            401,
+            {"WWW-Authenticate": 'Basic realm ="Login required !!"'},
+        )
+
+    user = User.query.filter_by(email=auth.get("email")).first()
+
+    if not user:
+        # returns 401 if user does not exist
+        return make_response(
+            "Could not verify! User does not exist",
+            401,
+            {"WWW-Authenticate": 'Basic realm ="User does not exist !!"'},
+        )
+
+    if bcrypt.check_password_hash(user.password, auth.get("password")):
+        # generates the JWT Token
+        token = jwt.encode(
+            {
+                "id": user.user_id,
+                "name": user.username,
+                "email": user.email,
+                "phone": user.phone,
+            },
+            "secret",
+            algorithm="HS256",
+        )
+
+        return make_response(
+            jsonify({"token": token, "name": user.username, "email": user.email}), 201
+        )
+
+    # returns 403 if password is wrong
+    return make_response(
+        "Could not verify! Wrong password",
+        403,
+        {"WWW-Authenticate": 'Basic realm ="Wrong Password !!"'},
+    )
+
+
+#!  update
+
+
+# decorator for verifying the JWT
+def token_required(token):
+    @wraps(token)
+    def decorated():
+        token = token
+        # jwt is passed in the request header
+        if "x-access-token" in request.headers:
+            token = request.headers["x-access-token"]
+        # return 401 if token is not passed
+        if not token:
+            return jsonify({"message": "Token is missing !!"}), 401
+
+        try:
+            # decoding the payload to fetch the stored details
+            data = jwt.decode(token, algorithm="HS256")
+            current_user = User.query.filter_by(id=data["user_id"]).first()
+        except:
+            return jsonify({"message": "Token is invalid !!"}), 401
+        # returns the current logged in users context to the routes
+        return current_user
+
+    return decorated
+
+
+@app.route("/users", methods=["GET"])
+def get_all_users():
+
+    # querying the database
+    # for all the entries in it
+    users = User.query.all()
+    # converting the query objects
+    # to list of jsons
+    output = []
+    for user in users:
+        # appending the user data json
+        # to the response list
+        output.append({"name": user.username, "email": user.email, "id": user.user_id})
+
+    return jsonify({"users": output})
+
+
+@app.route("/delete_user/<user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    user = User.query.filter_by(user_id=user_id).first()
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({"message": "User deleted successfully"}), 200
+
+
+def get_access_token():
+    mpesa_auth_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+
+    response = requests.get(
+        mpesa_auth_url, auth=HTTPBasicAuth(consumer_key, consumer_secret)
+    )
+    data = response.json()
+    return data["access_token"]
+
+
+@app.route("/access_token", methods=["GET"])
+def access_token():
+    return jsonify({"access_token": get_access_token()})
+
+
+@app.route("/stkpush", methods=["POST"])
+def stkpush():
+    access_token = get_access_token()
+    headers = {"Authorization": f"Bearer {access_token}"}
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    password = base64.b64encode(
+        f"{business_short_code}{pass_key}{timestamp}".encode("utf-8")
+    ).decode("utf-8")
+
+    payload = {
+        "BusinessShortCode": business_short_code,#tillno$account
+        "Password": password,
+        "Timestamp": timestamp,
+        "TransactionType": "CustomerPayBillOnline",
+        "Amount": amount,
+        "PartyA": phone_number,
+        "PartyB": business_short_code,
+        "PhoneNumber": phone_number,
+        "CallBackURL": "https://mydomain.com/path",
+        "AccountReference": web_name,
+        "TransactionDesc": "Payment of X",
+    }
+
+    response = requests.post(
+        "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+        headers=headers,
+        json=payload,
+    )
+
+    return jsonify(response.json())
+
+
+# Dictionary to store tokens and their expiration times
+token_dict = {}  # ?3min
+
+
+@app.route("/forgot_password", methods=["POST"])
+def forgot_password():
+    try:
+        data = request.get_json()
+        if not data or "email" not in data:
+            return jsonify({"error": True, "message": "Email is required"}), 400
+
+        email = data["email"]
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({"error": True, "message": "Email not found"}), 404
+
+        token = send_token(user.phone, user.username)
+        token_dict[user.phone] = token  # Store the token in the dictionary
+
+        return jsonify({"message": "Token sent successfully", "token": token}), 200
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
+
+@app.route("/reset_password", methods=["PATCH"])
+def reset_password():
+    try:
+        data = request.get_json()
+        if not data or not isinstance(data, dict):
+            return (
+                jsonify({"error": True, "message": "Invalid JSON data in request"}),
+                400,
+            )
+
+        token = data.get("token")
+        new_password = data.get("new_password")
+        email = data.get("email")  # Get the email from the request data
+
+        if not token or not new_password or not email:
+            return (
+                jsonify(
+                    {
+                        "error": True,
+                        "message": "Token, email, and new_password are required",
+                    }
+                ),
+                400,
+            )
+
+        # Verify if the token is valid
+        user = User.query.filter_by(email=email).first()
+        if not user or token != token_dict.get(user.phone):
+            return jsonify({"error": True, "message": "Invalid or expired token"}), 400
+
+        # Hash the new password
+        hashed_password = bcrypt.generate_password_hash(new_password).decode("utf-8")
+
+        # Update the user's password in the database with hashed_password
+        user.password = hashed_password
+        db.session.commit()  # Commit the changes to the database
+
+        # Remove the token from the dictionary
+        del token_dict[user.phone]
+
+        return jsonify({"message": "Password reset successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
 
 @app.route('/create_category', methods=['POST'])
 def create_category():
@@ -171,6 +479,7 @@ def delete_product(product_id):
 
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+        
 @app.route("/get_product_user_id/<int:user_id>", methods=["GET"])
 def get_product_by_user_id(user_id):
     try:
@@ -198,7 +507,7 @@ def get_product_by_user_id(user_id):
 def get_all_orders():
     try:
         orders = Order.query.all()
-        orders_data = [{"user_id": order.user_id, "product_name": order.product_name, "quantity": order.quantity, "image_link": order.image_link, "total_price": order.total_price} for order in orders]
+        orders_data = [{"user_id": order.user_id, "product_name": order.product_name, "quantity": order.quantity, "total_price": order.total_price} for order in orders]
         return jsonify(orders_data), 200
     except Exception as e:
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
@@ -276,7 +585,20 @@ def delete_order(order_id):
 @app.route("/reviews", methods=["GET"])
 def get_reviews():
     reviews = Review.query.all()
-    return jsonify([review for review in reviews]), 200
+    
+    # Convert Review objects to dictionaries
+    reviews_data = []
+    for review in reviews:
+        review_data = {
+            "review_id": review.review_id,
+            "product_id": review.product_id,
+            "rating": review.rating,
+            "review_text": review.review_text,
+            # Add other attributes as needed
+        }
+        reviews_data.append(review_data)
+    
+    return jsonify(reviews_data), 200
 
 @app.route("/reviews", methods=["POST"])
 def create_review():
@@ -286,7 +608,6 @@ def create_review():
             return jsonify({"error": "Invalid JSON data"}), 400
 
         product_id = data.get("product_id")
-        product_name = data.get("product_name")
         review_text = data.get("review_text")
         rating = data.get("rating")
         review_date = datetime.now().date()
@@ -296,7 +617,6 @@ def create_review():
 
         new_review = Review(
             product_id=product_id,
-            product_name=product_name,
             review_text=review_text,
             rating=rating,
             review_date=review_date
@@ -309,7 +629,6 @@ def create_review():
             {
                 "review_id": new_review.review_id,
                 "product_id": new_review.product_id,
-                "product_name":new_review.product_name,
                 "review_text": new_review.review_text,
                 "rating": new_review.rating,
                 "review_date": new_review.review_date.strftime("%Y-%m-%d"),
@@ -418,7 +737,6 @@ def add_to_cart():
         return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 
-
 @app.route('/cartitems/<int:cart_item_id>', methods=['DELETE'])
 def remove_cart_item(cart_item_id):
     cart_item = CartItem.query.get(cart_item_id)
@@ -490,6 +808,102 @@ def get_cart_items(user_id):
         })
     
     return jsonify({'cart_items': items_data}), 200
+
+
+@app.route("/admin/users", methods=["GET"])
+def get_users():
+    users = User.query.all()
+    user_data = [{"user_id": user.user_id, "username": user.username, "email": user.email, "phone": user.phone, "address": user.address, "role": user.role} for user in users]
+    return jsonify(user_data), 200
+
+@app.route("/admin/users/<int:user_id>", methods=["GET"])
+def get_user_by_id(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": True, "message": "User not found."}), 404
+    user_data = {"user_id": user.user_id, "username": user.username, "email": user.email, "phone": user.phone, "address": user.address, "role": user.role}
+    return jsonify(user_data), 200
+
+@app.route("/admin/users/del/<int:user_id>", methods=["DELETE"])
+def del_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": True, "message": "User not found."}), 404
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"message": f"User with ID {user_id} deleted successfully."}), 200
+
+@app.route("/admin/users/block/<int:user_id>", methods=["GET", "PUT"])
+def block_user(user_id):
+    if request.method == "GET":
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": True, "message": "User not found."}), 404
+        return jsonify({"user_id": user_id, "status": user.role}), 200
+
+    elif request.method == "PUT":
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": True, "message": "User not found."}), 404
+        user.role = "blocked"
+        db.session.commit()
+        return jsonify({"message": f"User with ID {user_id} blocked successfully."}), 200
+
+@app.route("/admin/orders", methods=["GET"])
+def all_orders():
+    try:
+        orders = Order.query.all()
+        orders_data = [{
+            "order_id": order.order_id,
+            "user_id": order.user_id,
+            "product_name": order.product_name,
+            "quantity": order.quantity,
+            "total_price": order.total_price,
+            "order_date": order.order_date.strftime("%Y-%m-%d %H:%M:%S"),
+            # Add other attributes as needed
+        } for order in orders]
+
+        return jsonify(orders_data), 200
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
+
+@app.route("/admin/orders/<int:order_id>", methods=["GET"])
+def get_order_by_id(order_id):
+    order = Order.query.get(order_id)
+    if not order:
+        return jsonify({"error": True, "message": "Order not found."}), 404
+    return jsonify({
+        "order_id": order.order_id,
+        "user_id": order.user_id,
+        "total_price": order.total_price,
+        "order_date": order.order_date.strftime("%Y-%m-%d %H:%M:%S"),
+        # Add other attributes as needed
+    }), 200
+
+@app.route("/admin/login", methods=["POST"])
+def admin_login():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": True, "message": "Invalid JSON data in request"}), 400
+
+        email = data.get("email")
+        password = data.get("password")
+
+        # Fetch the user from the database by email
+        admin = User.query.filter_by(email=email, role=User.ROLE_ADMIN).first()
+        if admin:
+            # Check if the provided password matches the hashed password in the database
+            if bcrypt.check_password_hash(admin.password, password):
+                return jsonify({"message": "Admin login successful."}), 200
+            else:
+                return jsonify({"error": True, "message": "Invalid password."}), 401
+        else:
+            return jsonify({"error": True, "message": "Admin not found."}), 401
+
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(port=4000, debug=True)
