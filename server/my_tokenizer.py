@@ -40,7 +40,7 @@ def send_token(phone_number, username):
     )
 
     headers = {
-        "Authorization": "App 1144fe09746d2c6d496f4cef33cbec90-554e3042-4eeb-4230-8c53-95251322596b",
+        "Authorization": "App 725fe5e9b12501a74dfc3b65f518da10-cfc9f7cb-0a02-497c-8f53-234460a5d066",
         "Content-Type": "application/json",
         "Accept": "application/json",
     }

@@ -24,10 +24,14 @@ consumer_key = "fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG"
 consumer_secret = "EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muIG"
 business_short_code = 174379
 pass_key = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
-phone_number = "254703912965"
-# phone_number = "254703912965" Barclay
+# phone_number = "254710224989" #Neem
+# phone_number = "254705275773" #amina
+# phone_number = "254703912965" #Barclay
+# phone_number = "254727371235"  #Khalid
+# phone_number = "254707684877" Dave
+phone_number = "254721601031"
 web_name = "AGRI-SOKO"
-amount = "5"
+amount = "1"
 
 
 app = Flask(__name__)

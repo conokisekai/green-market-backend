@@ -7,7 +7,7 @@ db = SQLAlchemy(app)
 
 class User(db.Model):
     __tablename__ = "user"
-    ROLE_BUYER = 'buyer'
+    ROLE_BUYER = 'buyer' #!1 role buyer 
     ROLE_SELLER = 'seller'
 
     ROLE_CHOICES = [

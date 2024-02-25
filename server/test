@@ -1,0 +1,22 @@
+import http.client
+import json
+
+conn = http.client.HTTPSConnection("z162xk.api.infobip.com")
+payload = json.dumps({
+    "messages": [
+        {
+            "destinations": [{"to":"254705275773"}],
+            "from": "ServiceSMS",
+            "text": "Hello,\n\nThis is a test message from Infobip. Have a nice day!"
+        }
+    ]
+})
+headers = {
+    'Authorization': 'App c218ec80ea350a93c0b9dc1a96f17b51-502e7690-6561-47e4-a3a6-cf29ce4ccfcb',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+}
+conn.request("POST", "/sms/2/text/advanced", payload, headers)
+res = conn.getresponse()
+data = res.read()
+print(data.decode("utf-8"))
