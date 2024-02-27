@@ -237,7 +237,8 @@ def stkpush():
     data = request.get_json()
     amount = data.get("amount", 1)  # Default to 1 if amount is not provided
     phone_number = data.get(
-    ) 
+        "phone_number", "2547xxxxxxxx"
+    )  # Default phone number if not provided
 
     web_name = "test"
 
