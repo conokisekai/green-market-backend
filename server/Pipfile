@@ -20,6 +20,10 @@ pyotp = "*"
 flask-mail = "*"
 qrcode = "*"
 flask-bcrypt = "*"
+passlib = "*"
+jwt = "*"
+mailjet-rest = "*"
+pyjwt = "*"
 
 [dev-packages]
 
