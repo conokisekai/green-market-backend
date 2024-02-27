@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.DEBUG)
 def send_otp(phone_number, username):
     logging.debug("Sending OTP...")
     key = "AMAROWENFAITHKHALIDCONRADJIMJOHNWILLY"
-    totp = pyotp.TOTP(key, interval=30)  # Use a 30-second interval for TOTP
+    totp = pyotp.TOTP(key, interval=180)  # Use a 30-second interval for TOTP
     conn = http.client.HTTPSConnection("e19152.api.infobip.com")
 
     payload = json.dumps(

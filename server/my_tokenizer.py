@@ -1,14 +1,12 @@
-import http.client
+import os
 import json
-import secrets
 import logging
+import secrets
 from datetime import datetime, timedelta
+from mailjet_rest import Client
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
-
-# Dictionary to store tokens and their expiration times
-token_dict = {}
 
 
 def generate_token():
@@ -17,39 +15,28 @@ def generate_token():
     return token, expiration_time
 
 
-def send_token(phone_number, username):
+def send_token(email, username):
     logging.debug("Sending token...")
-    if phone_number in token_dict and datetime.now() < token_dict[phone_number][1]:
-        token = token_dict[phone_number][0]
-    else:
-        token, expiration_time = generate_token()
-        token_dict[phone_number] = (token, expiration_time)
+    token, expiration_time = generate_token()
+    api_key = os.getenv("MAILJET_API_KEY")
+    api_secret = os.getenv("MAILJET_API_SECRET")
+    mailjet = Client(auth=(api_key, api_secret), version="v3.1")
 
-    conn = http.client.HTTPSConnection("e19152.api.infobip.com")
-
-    payload = json.dumps(
-        {
-            "messages": [
-                {
-                    "destinations": [{"to": phone_number}],
-                    "from": "ServiceSMS",
-                    "text": f"Agri-Soko 🥀,\n\nThis is a message from Agri-Soko Team 👨‍🌾 \n\n{username}, your token is {token}.",
-                }
-            ]
-        }
-    )
-
-    headers = {
-        "Authorization": "App 725fe5e9b12501a74dfc3b65f518da10-cfc9f7cb-0a02-497c-8f53-234460a5d066",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
+    message = {
+        "Messages": [
+            {
+                "From": {"Email": "your_email@example.com", "Name": "Agri-Soko Team"},
+                "To": [{"Email": email, "Name": username}],
+                "Subject": "Agri-Soko Token",
+                "TextPart": f"Hello {username}, your token is {token}.",
+                "HTMLPart": f"<h3>Hello {username},</h3><p>Your token is {token}.</p>",
+            }
+        ]
     }
 
     try:
-        conn.request("POST", "/sms/2/text/advanced", payload, headers)
-        res = conn.getresponse()
-        data = res.read()
-        logging.debug(data.decode("utf-8"))
-        return token  # Return the token if the SMS is sent successfully
+        response = mailjet.send.create(data=message)
+        logging.debug(json.dumps(response.json(), indent=2))
+        return token  # Return the token if the email is sent successfully
     except Exception as e:
         logging.error(f"An error occurred: {str(e)}")
