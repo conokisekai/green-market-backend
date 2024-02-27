@@ -28,7 +28,7 @@ db.init_app(app)
 consumer_key='fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG'
 consumer_secret='EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muIG'
 business_short_code = "174379"
-phone_number = "254729566037"
+phone_number = "254768171426"
 web_name = "AGRI-SOKO"
 @app.route("/")
 def home():
@@ -134,32 +134,28 @@ def user_login():
             {'WWW-Authenticate' : 'Basic realm ="Wrong Password !!"'}
         )
 # decorator for verifying the JWT
-def token_required(token):
-    @wraps(token)
-    def decorated():
-        token = token
-        # jwt is passed in the request header
-        if 'x-access-token' in request.headers:
-            token = request.headers['x-access-token']
-        # return 401 if token is not passed
+
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+
         if not token:
-            return jsonify({'message' : 'Token is missing !!'}), 401
-  
+            return jsonify({'message': 'Token is missing!'}), 401
+
         try:
-            # decoding the payload to fetch the stored details
-            data = jwt.decode(token, algorithm="HS256" )
-            current_user = User.query\
-                .filter_by(id = data['user_id'])\
-                .first()
+            # Verify and decode the JWT token
+            data = jwt.decode(token, "secret", algorithms=["HS256"])
+            current_user = User.query.get(data['id'])
         except:
-            return jsonify({
-                'message' : 'Token is invalid !!'
-            }), 401
-        # returns the current logged in users context to the routes
-        return  (current_user)
-  
+            return jsonify({'message': 'Token is invalid!'}), 401
+
+        return f(current_user, *args, **kwargs)
+
     return decorated
 @app.route('/users', methods =['GET'])
+@token_required
 def get_all_users():
     
     # querying the database
