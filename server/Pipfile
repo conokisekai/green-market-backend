@@ -24,6 +24,7 @@ passlib = "*"
 jwt = "*"
 mailjet-rest = "*"
 pyjwt = "*"
+requests = "*"
 
 [dev-packages]
 

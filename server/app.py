@@ -498,6 +498,7 @@ def get_product_by_id(product_id):
             "quantity": product.quantity,
             "category_name": product.category_name,
             "user_id": product.user_id,
+            "image_link":product.image_link,
         }
 
         return jsonify({"product": product_data}), 200
@@ -539,8 +540,10 @@ def get_product_by_user_id(user_id):
                     "product_name": product.product_name,
                     "price": product.price,
                     "quantity": product.quantity,
+                    "description": product.description,
                     "category_name": product.category_name,
                     "user_id": product.user_id,
+                    "image_link":product.image_link
                 }
             )
 
@@ -903,6 +906,7 @@ def get_user_by_id(user_id):
         return jsonify({"error": True, "message": "User not found."}), 404
     user_data = {
         "user_id": user.user_id,
+        "image_link":user.image_link,
         "username": user.username,
         "email": user.email,
         "phone": user.phone,
