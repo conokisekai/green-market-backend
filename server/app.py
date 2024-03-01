@@ -10,7 +10,7 @@ from models import db, Product, Order, User, Review, Notifications, Category, Ca
 from flask_bcrypt import Bcrypt
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
-
+from flasgger import Swagger
 import jwt
 from datetime import datetime, timedelta
 from functools import wraps
@@ -26,6 +26,8 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///market.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 migrate = Migrate(app, db)
 db.init_app(app)
+swagger = Swagger(app)
+
 
 # config secret key
 consumer_key = "fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG"
@@ -34,14 +36,50 @@ consumer_secret = "EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17m
 date_today = datetime.today().strftime("%Y, %m, %d")
 
 
+
 @app.route("/")
 def home():
+    """
+    Home endpoint.
+    ---
+    responses:
+      200:
+        description: A JSON object with server information.
+    """
     data = {"Server side": "Checkers"}
-    return jsonify(data), 200
+    return jsonify(data), 2000
 
 
 @app.route("/user_signup", methods=["POST"])
 def create_user():
+    """
+    Create user endpoint.
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            username:
+              type: string
+            password:
+              type: string
+            email:
+              type: string
+            phone:
+              type: string
+            address:
+              type: string
+            image_link:
+              type: string
+            role:
+              type: string
+    responses:
+      201:
+        description: A JSON object with user information and OTP status.
+    """
     try:
         data = request.get_json()
         if not data or not isinstance(data, dict):
@@ -102,6 +140,30 @@ def create_user():
 
 @app.route("/user_login", methods=["POST"])
 def user_login():
+    """
+    User login endpoint.
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+            phone:
+              type: string
+            username:
+              type: string
+            password:
+              type: string
+    responses:
+      201:
+        description: A JSON object with user information and JWT token.
+    """
+    # Your existing route code here
+
     auth = request.get_json()
     if (
         not auth
@@ -173,6 +235,14 @@ def user_login():
 
 @app.route("/users", methods=["GET"])
 def get_all_users():
+    """
+    Get all users endpoint.
+    ---
+    responses:
+      200:
+        description: A JSON object with list of users.
+    """
+    # Your existing route code here
 
     # querying the database
     # for all the entries in it
@@ -199,8 +269,23 @@ def get_all_users():
 
 @app.route("/delete_user/<user_id>", methods=["DELETE"])
 def delete_user(user_id):
-
-    current_user = token_required(token)
+    """
+    Delete user endpoint.
+    ---
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        description: The ID of the user to delete.
+        type: integer
+    responses:
+      200:
+        description: A JSON object with success message.
+      404:
+        description: A JSON object with error message if user not found.
+    """
+    # Your existing route code here
+    
     user = User.query.filter_by(user_id=user_id).first()
 
     if not user:
@@ -222,11 +307,30 @@ def get_access_token():
     return data["access_token"]
 
 
-from flask import request
+
 
 
 @app.route("/stkpush", methods=["POST"])
 def stkpush():
+    """
+    STK push endpoint.
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            amount:
+              type: integer
+            phone_number:
+              type: string
+    responses:
+      200:
+        description: A JSON object with STK push response.
+    """
+    # Your existing route code here
     access_token = get_access_token()
     headers = {"Authorization": f"Bearer {access_token}"}
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -275,6 +379,29 @@ token_dict = {}
 
 @app.route("/forgot_password", methods=["POST"])
 def forgot_password():
+    """
+    Forgot password endpoint.
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+    responses:
+      200:
+        description: A JSON object with success message and token.
+      400:
+        description: A JSON object with error message if email is missing.
+      404:
+        description: A JSON object with error message if email is not found.
+      500:
+        description: A JSON object with error message if an error occurs.
+    """
+    # Your existing route code here
     try:
         data = request.get_json()
         if not data or "email" not in data:
@@ -297,6 +424,31 @@ def forgot_password():
 
 @app.route("/reset_password", methods=["PATCH"])
 def reset_password():
+    """
+    Reset password endpoint.
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            token:
+              type: string
+            new_password:
+              type: string
+            email:
+              type: string
+    responses:
+      200:
+        description: A JSON object with success message.
+      400:
+        description: A JSON object with error message if token, new_password, or email is missing.
+      500:
+        description: A JSON object with error message if an error occurs.
+    """
+    # Your existing route code here
     try:
         data = request.get_json()
         if not data or not isinstance(data, dict):
@@ -343,6 +495,27 @@ def reset_password():
 
 @app.route("/create_category", methods=["POST"])
 def create_category():
+    """
+    Create category endpoint.
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            category_name:
+              type: string
+    responses:
+      201:
+        description: A JSON object with created category details.
+      400:
+        description: A JSON object with error message if category_name is missing or empty.
+      500:
+        description: A JSON object with error message if an error occurs.
+    """
+    # Your existing route code here
     try:
         data = request.get_json()
         if not data or not isinstance(data, dict):
@@ -378,6 +551,16 @@ def create_category():
 
 @app.route("/get_all_categories", methods=["GET"])
 def get_all_categories():
+    """
+    Get all categories endpoint.
+    ---
+    responses:
+      200:
+        description: A JSON object with list of all categories.
+      500:
+        description: A JSON object with error message if an error occurs.
+    """
+    # Your existing route code here
     try:
         categories = Category.query.all()
         category_list = [
@@ -396,6 +579,40 @@ def get_all_categories():
 
 @app.route("/create_product", methods=["POST"])
 def create_product():
+    """
+    Create product endpoint.
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            user_id:
+              type: integer
+            product_name:
+              type: string
+            price:
+              type: number
+            quantity:
+              type: integer
+            description:
+              type: string
+            category_name:
+              type: string
+            image_link:
+              type: string
+    responses:
+      201:
+        description: A JSON object with created product details.
+      400:
+        description: A JSON object with error message if any required field is missing or empty.
+      500:
+        description: A JSON object with error message if an error occurs.
+    """
+    # Your existing route code here
+
     try:
         data = request.get_json()
         if not data or not isinstance(data, dict):
@@ -459,6 +676,15 @@ def create_product():
 
 @app.route("/get_all_products", methods=["GET"])
 def get_all_products():
+    """
+    Get all products endpoint.
+    ---
+    responses:
+      200:
+        description: A JSON object with list of all products.
+      500:
+        description: A JSON object with error message if an error occurs.
+    """
     try:
         products = Product.query.all()
         product_list = []
@@ -485,6 +711,25 @@ def get_all_products():
 
 @app.route("/get_product/<int:product_id>", methods=["GET"])
 def get_product_by_id(product_id):
+    """
+    Get product by ID endpoint.
+    ---
+    parameters:
+      - name: product_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the product to retrieve.
+    responses:
+      200:
+        description: A JSON object with product details.
+      404:
+        description: A JSON object with error message if product is not found.
+      500:
+        description: A JSON object with error message if an error occurs.
+    """
+    # Your existing route code here
+
     try:
         product = Product.query.get(product_id)
 
@@ -509,6 +754,24 @@ def get_product_by_id(product_id):
 
 @app.route("/delete_product/<int:product_id>", methods=["DELETE"])
 def delete_product(product_id):
+    """
+    Delete product by ID endpoint.
+    ---
+    parameters:
+      - name: product_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the product to delete.
+    responses:
+      200:
+        description: A JSON object with success message.
+      404:
+        description: A JSON object with error message if product is not found.
+      500:
+        description: A JSON object with error message if an error occurs.
+    """
+    # Your existing route code here
     try:
         product = Product.query.get(product_id)
 
@@ -526,6 +789,24 @@ def delete_product(product_id):
 
 @app.route("/get_product_user_id/<int:user_id>", methods=["GET"])
 def get_product_by_user_id(user_id):
+    """
+    Get products by user ID endpoint.
+    ---
+    parameters:
+      - name: user_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the user whose products to retrieve.
+    responses:
+      200:
+        description: A JSON object with products details.
+      404:
+        description: A JSON object with error message if products are not found.
+      500:
+        description: A JSON object with error message if an error occurs.
+    """
+    # Your existing route code here
     try:
         products = Product.query.filter_by(user_id=user_id).all()
 
@@ -555,6 +836,16 @@ def get_product_by_user_id(user_id):
 
 @app.route("/orders", methods=["GET"])
 def get_all_orders():
+    """
+    Get all orders endpoint.
+    ---
+    responses:
+      200:
+        description: A JSON object with orders details.
+      500:
+        description: A JSON object with error message if an error occurs.
+    """
+    # Your existing route code here
     try:
         orders = Order.query.all()
         orders_data = [
@@ -573,6 +864,41 @@ def get_all_orders():
 
 @app.route("/orders", methods=["POST"])
 def create_orders():
+    """
+    Create orders endpoint.
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        description: JSON object containing order details.
+        schema:
+          type: object
+          properties:
+            user_id:
+              type: integer
+              description: ID of the user placing the order.
+            product_id:
+              type: integer
+              description: ID of the product being ordered.
+            product_name:
+              type: string
+              description: Name of the product being ordered.
+            quantity:
+              type: integer
+              description: Quantity of the product being ordered.
+            product_price:
+              type: number
+              description: Price of the product being ordered.
+    responses:
+      201:
+        description: A JSON object with order details.
+      400:
+        description: A JSON object with error message if request data is invalid.
+      500:
+        description: A JSON object with error message if an error occurs.
+    """
+    # Your existing route code here
     try:
         # request data in json format
         data = request.json
@@ -634,6 +960,24 @@ def create_orders():
 
 @app.route("/orders/<int:order_id>", methods=["DELETE"])
 def delete_order(order_id):
+    """
+    Delete order endpoint.
+    ---
+    parameters:
+      - name: order_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the order to delete.
+    responses:
+      204:
+        description: A JSON object indicating successful deletion.
+      404:
+        description: A JSON object with error message if order is not found.
+      500:
+        description: A JSON object with error message if an error occurs.
+    """
+    # Your existing route code here
     try:
         order = Order.query.get(order_id)
 
@@ -651,6 +995,14 @@ def delete_order(order_id):
 
 @app.route("/reviews", methods=["GET"])
 def get_reviews():
+    """
+    Get all reviews.
+    ---
+    responses:
+      200:
+        description: A JSON array of review objects.
+    """
+    # Your existing route code here
     reviews = Review.query.all()
 
     # Convert Review objects to dictionaries
@@ -670,6 +1022,30 @@ def get_reviews():
 
 @app.route("/reviews", methods=["POST"])
 def create_review():
+    """
+    Create a new review.
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            product_id:
+              type: integer
+              description: ID of the product being reviewed.
+            review_text:
+              type: string
+              description: The review text.
+            rating:
+              type: integer
+              description: The rating given for the product.
+    responses:
+      201:
+        description: A JSON object with the created review details.
+    """
+    # Your existing route code here
     try:
         data = request.get_json()
         if not data:
@@ -712,6 +1088,22 @@ def create_review():
 
 @app.route("/reviews/<int:review_id>", methods=["DELETE"])
 def delete_review(review_id):
+    """
+    Delete a review by its ID.
+    ---
+    parameters:
+      - name: review_id
+        in: path
+        description: ID of the review to delete
+        required: true
+        type: integer
+    responses:
+      200:
+        description: Review deleted successfully
+      404:
+        description: Review not found
+    """
+    # Your existing route code here
     review = Review.query.get(review_id)
     if not review:
         return jsonify({"error": "Review not found"}), 404
@@ -724,6 +1116,27 @@ def delete_review(review_id):
 
 @app.route("/cartitems/<int:user_id>/<int:cart_item_id>", methods=["GET"])
 def get_cart_item(user_id, cart_item_id):
+    """
+    Get details of a cart item.
+    ---
+    parameters:
+      - name: user_id
+        in: path
+        description: ID of the user
+        required: true
+        type: integer
+      - name: cart_item_id
+        in: path
+        description: ID of the cart item
+        required: true
+        type: integer
+    responses:
+      200:
+        description: Details of the cart item
+      404:
+        description: User, cart item, or product not found
+    """
+    # Your existing route code here
     try:
         user = User.query.get(user_id)
 
@@ -772,6 +1185,35 @@ def get_cart_item(user_id, cart_item_id):
 
 @app.route("/cart", methods=["POST"])
 def add_to_cart():
+    """
+    Add an item to the cart.
+    ---
+    parameters:
+      - name: user_id
+        in: formData
+        description: ID of the user
+        required: true
+        type: integer
+      - name: product_id
+        in: formData
+        description: ID of the product to add to the cart
+        required: true
+        type: integer
+      - name: quantity
+        in: formData
+        description: Quantity of the product to add (default is 1)
+        required: false
+        type: integer
+    responses:
+      201:
+        description: Item added to cart successfully
+      400:
+        description: Missing required fields
+      404:
+        description: Product not found
+    """
+    # Your existing route code here
+
     try:
         # Get JSON data from the request
         data = request.get_json()
@@ -834,6 +1276,22 @@ def add_to_cart():
 
 @app.route("/cartitems/<int:cart_item_id>", methods=["DELETE"])
 def remove_cart_item(cart_item_id):
+    """
+    Remove an item from the cart by its ID.
+    ---
+    parameters:
+      - name: cart_item_id
+        in: path
+        description: ID of the cart item to remove
+        required: true
+        type: integer
+    responses:
+      200:
+        description: Item removed from the cart successfully
+      404:
+        description: Cart item not found
+    """
+    # Your existing route code here
     cart_item = CartItem.query.get(cart_item_id)
 
     if not cart_item:
@@ -848,6 +1306,22 @@ def remove_cart_item(cart_item_id):
 
 @app.route("/cartitems/<int:user_id>", methods=["GET"])
 def get_cart_items(user_id):
+    """
+    Get all cart items for a user by user ID.
+    ---
+    parameters:
+      - name: user_id
+        in: path
+        description: ID of the user
+        required: true
+        type: integer
+    responses:
+      200:
+        description: A list of cart items for the user
+      404:
+        description: User not found
+    """
+    # Your existing route code here
     user = User.query.get(user_id)
 
     if not user:
@@ -883,6 +1357,14 @@ def get_cart_items(user_id):
 
 @app.route("/admin/users", methods=["GET"])
 def get_users():
+    """
+    Get all users.
+    ---
+    responses:
+      200:
+        description: A list of users
+    """
+    # Your existing route code here
     users = User.query.all()
     user_data = [
         {
@@ -901,6 +1383,23 @@ def get_users():
 
 @app.route("/admin/users/<int:user_id>", methods=["GET"])
 def get_user_by_id(user_id):
+    """
+    Get user by ID.
+    ---
+    parameters:
+      - name: user_id
+        in: path
+        description: ID of the user
+        required: true
+        type: integer
+    responses:
+      200:
+        description: User data
+      404:
+        description: User not found
+    """
+    # Your existing route code here
+
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": True, "message": "User not found."}), 404
@@ -918,6 +1417,21 @@ def get_user_by_id(user_id):
 
 @app.route("/admin/users/del/<int:user_id>", methods=["DELETE"])
 def del_user(user_id):
+    """
+    Delete user by ID.
+    ---
+    parameters:
+      - name: user_id
+        in: path
+        description: ID of the user to delete
+        required: true
+        type: integer
+    responses:
+      200:
+        description: User deleted successfully
+      404:
+        description: User not found
+    """
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": True, "message": "User not found."}), 404
@@ -928,6 +1442,22 @@ def del_user(user_id):
 
 @app.route("/admin/users/block/<int:user_id>", methods=["GET", "PUT"])
 def block_user(user_id):
+    """
+    Block or unblock a user by ID.
+    ---
+    parameters:
+      - name: user_id
+        in: path
+        description: ID of the user to block/unblock
+        required: true
+        type: integer
+    responses:
+      200:
+        description: User status
+      404:
+        description: User not found
+    """
+    # Your existing route code here
     if request.method == "GET":
         user = User.query.get(user_id)
         if not user:
@@ -948,6 +1478,16 @@ def block_user(user_id):
 
 @app.route("/admin/orders", methods=["GET"])
 def all_orders():
+    """
+    Get all orders.
+    ---
+    responses:
+      200:
+        description: List of orders
+      500:
+        description: An error occurred
+    """
+    # Your existing route code here
     try:
         orders = Order.query.all()
         orders_data = [
@@ -971,6 +1511,22 @@ def all_orders():
 
 @app.route("/admin/orders/<int:order_id>", methods=["GET"])
 def get_order_by_id(order_id):
+    """
+    Get order by ID.
+    ---
+    parameters:
+      - name: order_id
+        in: path
+        description: ID of the order
+        required: true
+        type: integer
+    responses:
+      200:
+        description: Order details
+      404:
+        description: Order not found
+    """
+    # Your existing route code here
     order = Order.query.get(order_id)
     if not order:
         return jsonify({"error": True, "message": "Order not found."}), 404
@@ -990,6 +1546,30 @@ def get_order_by_id(order_id):
 
 @app.route("/admin/login", methods=["POST"])
 def admin_login():
+    """
+    Admin login.
+    ---
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                description: Admin email
+              password:
+                type: string
+                description: Admin password
+    responses:
+      200:
+        description: Admin login successful
+      401:
+        description: Invalid password or admin not found
+      500:
+        description: An error occurred
+    """
+    # Your existing route code here
     try:
         data = request.get_json()
         if not data:

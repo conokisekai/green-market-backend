@@ -25,6 +25,7 @@ jwt = "*"
 mailjet-rest = "*"
 pyjwt = "*"
 requests = "*"
+flasgger = "*"
 
 [dev-packages]
 
