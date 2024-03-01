@@ -378,6 +378,43 @@ token_dict = {}
 
 @app.route("/forgot_password", methods=["POST"])
 def forgot_password():
+    """
+    Forgot Password Endpoint
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+              description: The email of the user
+              example: test@example.com
+    responses:
+      200:
+        description: Token sent successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Message indicating token sent successfully
+              example: Token sent successfully
+            token:
+              type: string
+              description: The generated token
+              example: abcdef123456
+      400:
+        description: Bad request if email is missing
+      404:
+        description: User not found if email is not registered
+      500:
+        description: Internal server error
+    """
     try:
         data = request.get_json()
         if not data or "email" not in data:
@@ -399,6 +436,40 @@ def forgot_password():
 
 @app.route("/reset_password", methods=["PATCH"])
 def reset_password():
+    """
+    Reset Password Endpoint
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+              description: The email of the user
+              example: test@example.com
+            token:
+              type: string
+              description: The reset token sent to the user
+              example: abcdef123456
+            new_password:
+              type: string
+              description: The new password to be set
+              example: new_password
+    responses:
+      200:
+        description: Password reset successfully
+      400:
+        description: Bad request if token, email, or new_password is missing
+      404:
+        description: Invalid or expired token
+      500:
+        description: Internal server error
+    """
     try:
         data = request.get_json()
         if not data or not isinstance(data, dict):
