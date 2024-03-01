@@ -373,47 +373,22 @@ def stkpush():
     return jsonify(response.json())
 
 
-# Dictionary to store tokens and their expiration times
 token_dict = {}
 
 
 @app.route("/forgot_password", methods=["POST"])
 def forgot_password():
-    """
-    Forgot password endpoint.
-    ---
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            email:
-              type: string
-    responses:
-      200:
-        description: A JSON object with success message and token.
-      400:
-        description: A JSON object with error message if email is missing.
-      404:
-        description: A JSON object with error message if email is not found.
-      500:
-        description: A JSON object with error message if an error occurs.
-    """
-    # Your existing route code here
     try:
         data = request.get_json()
         if not data or "email" not in data:
             return jsonify({"error": True, "message": "Email is required"}), 400
 
         email = data["email"]
-        # Assuming User is the SQLAlchemy model for your users
         user = User.query.filter_by(email=email).first()
         if not user:
             return jsonify({"error": True, "message": "Email not found"}), 404
 
-        token = send_token(email, user.username)
+        token = send_token(user.phone, user.username)
         token_dict[email] = token  # Store the token in the dictionary
 
         return jsonify({"message": "Token sent successfully", "token": token}), 200
@@ -424,31 +399,6 @@ def forgot_password():
 
 @app.route("/reset_password", methods=["PATCH"])
 def reset_password():
-    """
-    Reset password endpoint.
-    ---
-    parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            token:
-              type: string
-            new_password:
-              type: string
-            email:
-              type: string
-    responses:
-      200:
-        description: A JSON object with success message.
-      400:
-        description: A JSON object with error message if token, new_password, or email is missing.
-      500:
-        description: A JSON object with error message if an error occurs.
-    """
-    # Your existing route code here
     try:
         data = request.get_json()
         if not data or not isinstance(data, dict):

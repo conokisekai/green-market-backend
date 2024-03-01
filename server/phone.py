@@ -27,7 +27,7 @@ def send_otp(phone_number, username):
     )
 
     headers = {
-        "Authorization": "App 725fe5e9b12501a74dfc3b65f518da10-cfc9f7cb-0a02-497c-8f53-234460a5d066",
+        "Authorization": "App 054e2710e039270c066d0b4b7101d9d0-d6099788-2f1e-4709-87ee-c36858244edb",
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
