@@ -1,120 +1,279 @@
-from flask import Flask,jsonify,request
-import json
+from flask import Flask, jsonify, request,make_response
+import json,requests
+from requests.auth import HTTPBasicAuth
+from passlib.hash import sha256_crypt
+import base64,urllib3
+from phone import send_otp
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from models import db, Product, Order, Farmer, Buyer, Review, Notifications
+from models import db, Product, Order, User, Review, Notifications, Category, CartItem
+from flask_bcrypt import Bcrypt
+from sqlalchemy.exc import IntegrityError
+from  werkzeug.security import generate_password_hash, check_password_hash
+# imports for PyJWT authentication
+import jwt
+from datetime import datetime, timedelta
+from functools import wraps
+from models import User
+
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///market.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-migrate=Migrate(app,db)
+bcrypt = Bcrypt(app)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///market.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+migrate = Migrate(app, db)
 db.init_app(app)
 
-
-@app.route('/')
+#config secret key
+consumer_key='fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG'
+consumer_secret='EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muIG'
+business_short_code = "174379"
+phone_number = "254792124905"
+web_name = "AGRI-SOKO"
+@app.route("/")
 def home():
-    data = {'Server side': 'Checkers'}
+    data = {"Server side": "Checkers"}
     return jsonify(data), 200
 
-
-
-@app.route('/farmer_signup', methods=['POST'])
+@app.route("/user_signup", methods=["POST"])
 def create_user():
-    data = request.get_json()
-    username = data['username']
-    password = data['password']
-    email=data['email']
-    phone=data['phone']
-    address=data['address']
+    try:
+        data = request.get_json()
+        if not data or not isinstance(data, dict):
+            return (
+                jsonify({"error": True, "message": "Invalid JSON data in request"}),
+                400,
+            )
 
-    user = Farmer.query.filter_by(username=username).first()
+        required_fields = ["username", "password", "email", "phone", "address"]
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return (
+                    jsonify({"error": True, "message": f"Missing or empty {field}"}),
+                    400,
+                )
+        
+        hashed_password = bcrypt.generate_password_hash(data["password"]).decode(
+            "utf-8"
+        )
+        h = sha256_crypt.encrypt(data["password"])
+        
+        new_user = User(
+            username=data["username"],
+            password=data['password'],
+            email=data["email"],
+            phone=data["phone"],
+            address=data["address"],
+             role=data["role"],
+        )
+        db.session.add(new_user)
+        db.session.commit()
 
-    if user:
-        return jsonify({'error': True, 'message': 'user already exists'}), 400
-    new_user = Farmer(username=username, email=email,password=password,phone=phone, address=address)
-    db.session.add(new_user)
-    db.session.commit()
-    return jsonify({'id': new_user.farmer_id, "name":new_user.username})
+        # Send OTP only once after adding the user
+        send_otp(data["phone"], data["username"])
 
 
+        new_user_data = {
+            
+        'New_user_data':
+        
+          {
+            'id':new_user.user_id ,
+            'name': new_user.username,
+            'address': new_user.address, 
+            'contact': new_user.phone,
+            'role': new_user.role,
+            
+        }
+    }
+        return jsonify(new_user_data),201
 
-@app.route('/farmer_login', methods=['POST'])
-def farmer_login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    except Exception as e:
+        return jsonify({"error": True, "message": f"An error occurred: {str(e)}"}), 500
 
-    if not username or not password:
-        return jsonify({'error': 'Missing username or password'}), 400
+@app.route("/user_login", methods=["POST"])
+def user_login():
+    auth = request.form
+    if not auth or not auth.get('email') or not auth.get('password'):
+        # returns 401 if any email or / and password is missing
+        return make_response(
+            'Could not verify! Missing email or password.',
+            401,
+            {'WWW-Authenticate' : 'Basic realm ="Login required !!"'}
+        )
+  
+    user = User.query.filter_by(email = auth.get('email')).first()
+  
+    if not user:
+        # returns 401 if user does not exist
+        return make_response(
+            'Could not verify! User does not exist',
+            401,
+            {'WWW-Authenticate' : 'Basic realm ="User does not exist !!"'}
+        )
+    if  (user.password, auth.get('password')):
+        # generates the JWT Token
+            token = jwt.encode({
+                'id': user.user_id,
+                'name':user.username,
+                'email':user.email,
+                'phone':user.phone
+                
+                
+            }, "secret", algorithm="HS256")
+  
+            return make_response(jsonify({
+                'token' : token,
+                'name': user.username,
+                'email':user.email
+                }), 201)
+        # returns 403 if password is wrong
+    return make_response(
+            'Could not verify! Wrong password',
+            403,
+            {'WWW-Authenticate' : 'Basic realm ="Wrong Password !!"'}
+        )
+# decorator for verifying the JWT
 
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 401
+
+        try:
+            # Verify and decode the JWT token
+            data = jwt.decode(token, "secret", algorithms=["HS256"])
+            current_user = User.query.get(data['id'])
+        except:
+            return jsonify({'message': 'Token is invalid!'}), 401
+
+        return f(current_user, *args, **kwargs)
+
+    return decorated
+@app.route('/users', methods =['GET'])
+@token_required
+def get_all_users():
     
-    user = Farmer.query.filter_by(username=username).first()
+    # querying the database
+    # for all the entries in it
+    users = User.query.all()
+    # converting the query objects
+    # to list of jsons
+    output = []
+    for user in users:
+        # appending the user data json 
+        # to the response list
+        output.append({
+            'name' : user.username,
+            'email' : user.email,
+            'id': user.user_id
+        })
+  
+    return jsonify({'users': output})
+  
+@app.route("/delete_user/<user_id>", methods=["DELETE"])
+
+def delete_user(user_id):
+    user = User.query.filter_by(user_id=user_id).first()
 
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({"error": "User not found"}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({"message": "User deleted successfully"}), 200
+
+@app.route("/update_user/<int:user_id>", methods=["PATCH"])
+def patch_user(user_id):
+    try:
+        data = request.json
+
+        new_username = data.get("username")
+        new_password = data.get("password")
+
+        user = User.query.get(user_id)
+
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        if new_username:
+            user.username = new_username
+
+        if new_password:
+            user.password = new_password
+
+        db.session.commit()
+
+        return jsonify({"message": "User information updated successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"error": "An error occurred"}), 500
 
 
-    if user.password != password:
-        return jsonify({'error': 'Invalid password'}), 401
+   
+#stkpush#
 
+http=urllib3.PoolManager()
+def get_access_token():
+    mpesa_auth_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
 
-    user_details = {
-        'Farmer_id': user.farmer_id,
-        'username': user.username,
-        
+    response = requests.get(
+        mpesa_auth_url, auth=HTTPBasicAuth(consumer_key, consumer_secret)
+    )
+    data = response.json()
+    return data["access_token"]
+@app.route("/access_token", methods=["GET"])
+def access_token():
+    return jsonify({"access_token": get_access_token()})
+
+@app.route('/stkpush', methods=['POST'])
+def stk():
+    access_token = get_access_token()
+    headers = {"Authorization": f"Bearer {access_token}"}
+    Timestamp = datetime.now().strftime( '%Y%m%d%H%M%S' )
+    
+    pas = '174379' + 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919' + Timestamp
+    password= base64.b64encode(pas.encode('utf-8')).decode("utf-8")
+
+    payload = {
+    "BusinessShortCode": business_short_code,
+    "Password": password,
+    "Timestamp": Timestamp,
+    "TransactionType": "CustomerPayBillOnline",
+    "Amount": 50,
+    "PartyA": phone_number,
+    "PartyB": business_short_code,
+    "PhoneNumber": phone_number,
+    "CallBackURL": "https://mydomain.com/path",
+    "AccountReference": web_name,
+    "TransactionDesc": "Payment of X",
     }
 
-    return jsonify(user_details), 200
+    response = requests.post(
+        "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+        headers=headers,
+        json=payload,
+    )
 
-
-@app.route('/buyer_signup', methods=['POST'])
-def create_buyer():
-    data = request.get_json()
-    username = data['username']
-    password = data['password']
-    email=data['email']
-    phone=data['phone']
-    address=data['address']
-
-
-    user = Buyer.query.filter_by(username=username).first()
-
-    if user:
-        return jsonify({'error': True, 'message': 'user already exists'}), 400
-    new_user = Buyer(username=username, email=email,password=password,phone=phone, address=address)
-    db.session.add(new_user)
-    db.session.commit()
-    return jsonify({'id': new_user.id, "name":new_user.username})
-
-
-@app.route('/buyer_login', methods=['POST'])
-def buyer_login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-
-    if not username or not password:
-        return jsonify({'error': 'Missing username or password'}), 400
-
-    
-    user = Buyer.query.filter_by(username=username).first()
+    return jsonify(response.json())
+@app.route("/del_user_login/<user_id>", methods=["DELETE"])
+def delete(user_id):
+    user = User.query.filter_by(user_id=user_id).first()
 
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({"error": "User not found"}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({"message": "user deleted successfully"}), 200
 
 
-    if user.password != password:
-        return jsonify({'error': 'Invalid password'}), 401
 
-
-    user_details = {
-        'buyer_id': user.buyer_id,
-        'username': user.username,
-        
-    }
-
-    return jsonify(user_details), 200
-
-
-if __name__ == '__main__':
-    app.run(port=4000,debug=True)
+if __name__ == "__main__":
+    app.run(port=4000, debug=True)
