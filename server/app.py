@@ -28,7 +28,7 @@ db.init_app(app)
 consumer_key='fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG'
 consumer_secret='EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muIG'
 business_short_code = "174379"
-phone_number = "254768171426"
+phone_number = "254792124905"
 web_name = "AGRI-SOKO"
 @app.route("/")
 def home():
