@@ -18,7 +18,7 @@ from models import User
 import secrets
 from phone import send_otp
 from my_tokenizer import send_token
-
+from flask_cors import CORS
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
@@ -28,7 +28,7 @@ migrate = Migrate(app, db)
 db.init_app(app)
 swagger = Swagger(app)
 
-
+CORS(app, resources={r"/user_login": {"origins": "http://localhost:3000"}})
 # config secret key
 consumer_key = "fSJKwEHnmoiV2NXAFFSMu1Ja5SOzZLTmCSnM5lWQNrkZELbG"
 consumer_secret = "EPuvMFL9g7p1FxGvsLoKuOtgX8YiyRMMnH73CeJGhjG1yfncMV5VOiKGIP17muIG"
